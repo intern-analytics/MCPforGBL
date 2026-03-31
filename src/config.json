@@ -1,0 +1,30 @@
+{
+    "mcpServers": {
+        "brand-render-db": {
+            "command": "sse",
+            "url": "https://mcpforgbl-1.onrender.com"
+        },
+        "brand-db": {
+            "command": "C:\\Users\\Mike\\Desktop\\Chumbak MCP\\brand-mcp-server\\.venv\\Scripts\\python.exe",
+            "args": [
+                "-m",
+                "src.server"
+            ],
+            "env": {
+                "DB_HOST": "gbl-crawler-production-1.cjsbw32v9qjg.ap-south-1.rds.amazonaws.com",
+                "DB_PORT": "5432",
+                "DB_NAME": "gbl_data_lake",
+                "DB_USER": "powerbi_readonlyuser",
+                "DB_PASS": "gbl_powerbi_2025",
+                "PYTHONPATH": "C:\\Users\\Mike\\Desktop\\Chumbak MCP\\brand-mcp-server"
+            }
+        }
+    },
+    "preferences": {
+        "menuBarEnabled": false,
+        "coworkScheduledTasksEnabled": true,
+        "ccdScheduledTasksEnabled": true,
+        "sidebarMode": "chat",
+        "coworkWebSearchEnabled": false
+    }
+}
