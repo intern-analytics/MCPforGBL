@@ -1,6 +1,7 @@
 import asyncio
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
+from src.auth import verify_api_key
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 import uvicorn
@@ -26,7 +27,7 @@ async def root():
     return JSONResponse({"status": "brand-mcp-server running directly on FastAPI HTTP/SSE"})
 
 @fastapi_app.get("/sse")
-async def handle_sse(request: Request):
+async def handle_sse(request: Request, token: str = Depends(verify_api_key)):
     """The main Server-Sent Events endpoint for MCP clients."""
     # SseServerTransport.connect_sse requires the ASGI scope, receive, and send callables
     async with sse.connect_sse(
@@ -37,7 +38,7 @@ async def handle_sse(request: Request):
         )
 
 @fastapi_app.post("/messages")
-async def handle_messages(request: Request):
+async def handle_messages(request: Request, token: str = Depends(verify_api_key)):
     """Endpoint for MCP clients to POST incoming messages."""
     await sse.handle_post_message(request.scope, request.receive, request._send)
 

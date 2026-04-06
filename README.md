@@ -80,7 +80,33 @@ nohup python3 -m src.server2 > server.log 2>&1 &
 ```
 > **Note:** Your FastAPI server will now be accessible via your EC2 instance's IP on port 8000. **Important**: Make sure you edit your instance's **Security Group** in the AWS console to allow Inbound TCP traffic on **Port 8000**.
 
-### 6. Connect Claude Desktop to EC2
+### 6. Generate an API Key (for HTTP/SSE)
+To secure your remote HTTP/SSE server, it requires valid API keys (`src/server2.py`).
+Run the auth module to generate a strong key and save it to `api_keys.json`:
+```bash
+python3 -m src.auth generate "ClientName"
+```
+
+### 7. Connect Claude Desktop to EC2
+If you exposed Port 8000 publicly over HTTP/SSE, update `%APPDATA%\Claude\claude_desktop_config.json` on Windows to pass your generated key in the headers:
+```json
+{
+  "mcpServers": {
+    "brand-db-remote": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y", 
+        "mcp-remote", 
+        "http://YOUR-EC2-PUBLIC-IP:8000/sse", 
+        "--allow-http",
+        "--header", 
+        "Authorization: Bearer YOUR_GENERATED_KEY"
+      ]
+    }
+  }
+}
+```
+
 If you prefer not to expose Port 8000 publicly and want Claude Desktop to communicate securely via SSH to your newly launched EC2 instance, use the standard `stdio` configuration. 
 
 Open `%APPDATA%\Claude\claude_desktop_config.json` on your Windows machine and add:
