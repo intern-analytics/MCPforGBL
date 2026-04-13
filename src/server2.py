@@ -1,6 +1,7 @@
 import asyncio
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from src.auth import verify_api_key
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
@@ -20,6 +21,15 @@ sse = SseServerTransport("/messages")
 
 # Build the FastAPI application
 fastapi_app = FastAPI(title="Brand MCP HTTP/SSE Server")
+
+# Add CORS middleware to allow connections from claude.ai (and eventually your UI domain)
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://claude.ai", "http://localhost:5173", "http://localhost:3000"], 
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 @fastapi_app.get("/")
 async def root():
