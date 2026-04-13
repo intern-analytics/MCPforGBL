@@ -25,7 +25,7 @@ def generate_api_key(client_name: str) -> str:
     keys = load_keys()
     
     # Generate a random 32-byte hex string (64 characters long)
-    new_key = "sk-" + secrets.token_hex(32)
+    new_key = "gbl-" + secrets.token_hex(32)
     
     keys[client_name] = new_key
     save_keys(keys)
