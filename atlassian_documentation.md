@@ -40,7 +40,7 @@ async def handle_sse(request: Request, token: str = Depends(verify_api_key)):
         await app.run(read_stream, write_stream, app.create_initialization_options())
 
 @fastapi_app.post("/messages")
-async def handle_messages(request: Request, token: str = Depends(verify_api_key)):
+async def handle_messages(request: Request):
     await sse.handle_post_message(request.scope, request.receive, request._send)
 ```
 
@@ -77,8 +77,15 @@ sudo systemctl start mcp-server
 
 ---
 
-## 💻 Claude Desktop Configuration
-Users must use the `mcp-remote` proxy with the correct headers.
+## 💻 Connecting to Claude
+
+### Via Claude.ai (Web App)
+1. Navigate to Settings -> **Connectors**.
+2. Click **Add custom connector**.
+3. Input Server URL: `https://mcpforgbl.duckdns.org/sse?token=gbl-YOUR_KEY_HERE`
+
+### Via Claude Desktop Config
+Users must use the `mcp-remote` proxy.
 
 > [!IMPORTANT]
 > To avoid Windows path errors with `cmd.exe`, use the short-path `C:\\PROGRA~1\\nodejs\\npx.cmd`.
@@ -91,10 +98,7 @@ Users must use the `mcp-remote` proxy with the correct headers.
       "args": [
         "-y",
         "mcp-remote",
-        "http://YOUR-EC2-IP:8000/sse",
-        "--allow-http",
-        "--header",
-        "Authorization: Bearer gbl-YOUR_KEY_HERE"
+        "https://mcpforgbl.duckdns.org/sse?token=gbl-YOUR_KEY_HERE"
       ]
     }
   }

@@ -78,8 +78,17 @@ sudo systemctl status mcp-server
 
 ---
 
-## 🤖 Claude Desktop Configuration
+## 🤖 Connecting to Claude
 
+### Option A: Using Claude.ai (Web App)
+Because this server is publicly exposed via Nginx and protected with a Let's Encrypt HTTPS certificate, you can connect directly in your browser.
+
+1. Go to Claude.ai Settings -> **Developer** / **Connectors**.
+2. Click **Add custom connector**.
+3. Paste your secure URL: `https://mcpforgbl.duckdns.org/sse?token=gbl-YOUR_KEY_HERE`
+4. Connect and query!
+
+### Option B: Using Claude Desktop App
 Update your `%APPDATA%\Claude\claude_desktop_config.json` on Windows. 
 
 > [!IMPORTANT]  
@@ -93,10 +102,7 @@ Update your `%APPDATA%\Claude\claude_desktop_config.json` on Windows.
       "args": [
         "-y",
         "mcp-remote",
-        "http://YOUR-EC2-PUBLIC-IP:8000/sse",
-        "--allow-http",
-        "--header",
-        "Authorization: Bearer gbl-YOUR_KEY_HERE"
+        "https://mcpforgbl.duckdns.org/sse?token=gbl-YOUR_KEY_HERE"
       ]
     }
   }
