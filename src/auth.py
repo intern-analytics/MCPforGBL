@@ -2,11 +2,11 @@ import json
 import os
 import secrets
 from pathlib import Path
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 API_KEYS_FILE = Path(__file__).parent.parent / "api_keys.json"
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 def load_keys() -> dict:
     if not API_KEYS_FILE.exists():
@@ -44,17 +44,27 @@ def revoke_api_key(client_name: str):
     else:
         print(f"⚠️  No API key found for '{client_name}'.")
 
-async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if not credentials:
+async def verify_api_key(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    # 1. Try to get token from Authorization header
+    token = None
+    if credentials:
+        token = credentials.credentials
+    
+    # 2. If not in header, look in the URL (?token=...)
+    if not token:
+        token = request.query_params.get("token")
+    
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    token = credentials.credentials
     keys = load_keys()
-    
     if token not in keys.values():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
