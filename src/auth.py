@@ -35,6 +35,15 @@ def generate_api_key(client_name: str) -> str:
     print("\nIMPORTANT: Store this key securely. It is now active.")
     return new_key
 
+def revoke_api_key(client_name: str):
+    keys = load_keys()
+    if client_name in keys:
+        del keys[client_name]
+        save_keys(keys)
+        print(f"❌ Revoked API key for '{client_name}'. Access is now denied.")
+    else:
+        print(f"⚠️  No API key found for '{client_name}'.")
+
 async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if not credentials:
         raise HTTPException(
@@ -58,10 +67,27 @@ async def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(sec
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Manage MCP Server API Keys")
-    parser.add_argument("command", choices=["generate"], help="Command to run")
-    parser.add_argument("name", help="Name of the person/client this key is for")
+    parser.add_argument("command", choices=["generate", "revoke", "list"], help="Command to run")
+    parser.add_argument("name", nargs="?", help="Name of the person/client this key is for")
     
     args = parser.parse_args()
     
     if args.command == "generate":
-        generate_api_key(args.name)
+        if not args.name:
+            print("Error: 'generate' requires a name.")
+        else:
+            generate_api_key(args.name)
+    elif args.command == "revoke":
+        if not args.name:
+            print("Error: 'revoke' requires a name.")
+        else:
+            revoke_api_key(args.name)
+    elif args.command == "list":
+        keys = load_keys()
+        if not keys:
+            print("No keys found.")
+        else:
+            print("\nActive API Keys:")
+            for name, key in keys.items():
+                # Show only first 8 chars for security
+                print(f"  {name}: {key[:12]}...")
