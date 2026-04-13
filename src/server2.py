@@ -48,7 +48,7 @@ async def handle_sse(request: Request, token: str = Depends(verify_api_key)):
         )
 
 @fastapi_app.post("/messages")
-async def handle_messages(request: Request, token: str = Depends(verify_api_key)):
+async def handle_messages(request: Request):
     """Endpoint for MCP clients to POST incoming messages."""
     await sse.handle_post_message(request.scope, request.receive, request._send)
 
