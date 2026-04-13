@@ -88,7 +88,7 @@ Because this server is publicly exposed via Nginx and protected with a Let's Enc
 3. Paste your secure URL: `https://mcpforgbl.duckdns.org/sse?token=gbl-YOUR_KEY_HERE`
 4. Connect and query!
 
-### Option B: Using Claude Desktop App
+### Option B: Using Claude Desktop App (HTTPS)
 Update your `%APPDATA%\Claude\claude_desktop_config.json` on Windows. 
 
 > [!IMPORTANT]  
@@ -103,6 +103,27 @@ Update your `%APPDATA%\Claude\claude_desktop_config.json` on Windows.
         "-y",
         "mcp-remote",
         "https://mcpforgbl.duckdns.org/sse?token=gbl-YOUR_KEY_HERE"
+      ]
+    }
+  }
+}
+```
+
+### Option C: Using Claude Desktop App (HTTP IP Address & Bearer Header)
+If you prefer to connect directly to the EC2 instance's IP without using the DuckDNS URL or want to pass the token as a header instead of a URL parameter, use this configuration:
+
+```json
+{
+  "mcpServers": {
+    "gbl-data-lake": {
+      "command": "C:\\PROGRA~1\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://YOUR-EC2-PUBLIC-IP:8000/sse",
+        "--allow-http",
+        "--header",
+        "Authorization: Bearer gbl-YOUR_KEY_HERE"
       ]
     }
   }
