@@ -1,4 +1,4 @@
-# Brand MCP Server (Python)
+# MCP for GBL
 
 This provides an MCP server for accessing the brand Postgres database using Python.
 
