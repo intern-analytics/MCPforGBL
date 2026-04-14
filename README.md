@@ -14,15 +14,26 @@ Manage your keys locally or on EC2 using the built-in auth module:
 source .venv/bin/activate  # Linux/EC2
 .\.venv\Scripts\activate   # Windows
 
-# Generate a new key for a brand
-python -m src.auth generate "Chumbak"
+### 6. Manage Multi-Tenant API Keys (Admin API)
+To provision unique database tenants to separate keys, we host an internal Admin REST API.
+This API handles secrets, so it should **only** be accessed from localhost on your EC2 instance (binds to `:8001`).
 
-# List all active brands and keys
-python -m src.auth list
-
-# Revoke access for a brand
-python -m src.auth revoke "OldBrand"
+To start the Admin API:
+```bash
+python3 -m src.admin_api
 ```
+
+With the Admin API running, you can create a new brand tenant key from another EC2 terminal window:
+```bash
+curl -X POST http://127.0.0.1:8001/keys/generate \
+     -H "Content-Type: application/json" \
+     -d '{"db_user": "brand_a_user", "db_pass": "supersecret"}'
+```
+*(The response will contain the `api_key` assigned to `brand_a_user`.)*
+
+Other utility endpoints:
+- List tenants: `curl http://127.0.0.1:8001/keys`
+- Revoke tenant: `curl -X DELETE http://127.0.0.1:8001/keys/brand_a_user`
 
 ---
 

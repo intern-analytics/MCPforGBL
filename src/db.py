@@ -4,42 +4,53 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Module-level pool — created once at server startup, shared across all requests
-_pool: asyncpg.Pool = None
+# We now maintain separate tenant dynamic connection pools instead of a singular master one
+_pools: dict[str, asyncpg.Pool] = {}
 
-async def init_pool():
-    """Create the connection pool. Called once when the server starts."""
-    global _pool
-    _pool = await asyncpg.create_pool(
-        host=os.getenv("DB_HOST", "localhost"),
-        port=int(os.getenv("DB_PORT", "5432")),
-        database=os.getenv("DB_NAME", "brand_db"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASS", "password"),
-        min_size=2,   # Always keep 2 connections open and ready
-        max_size=10,  # Allow up to 10 simultaneous connections under heavy load
-    )
-    print("✅ Database connection pool initialized.")
+async def get_pool(db_user: str, db_pass: str) -> asyncpg.Pool:
+    """Retrieves or instantly initializes a connection pool tailored to the requested DB credentials."""
+    global _pools
+    
+    # Fallback default user structure to system envs if for some reason None reaches deep
+    host = os.getenv("DB_HOST", "localhost")
+    port = int(os.getenv("DB_PORT", "5432"))
+    database = os.getenv("DB_NAME", "brand_db")
+    username = db_user or os.getenv("DB_USER", "postgres")
+    password = db_pass or os.getenv("DB_PASS", "password")
 
-async def close_pool():
-    """Gracefully close the pool. Called once when the server shuts down."""
-    global _pool
-    if _pool:
-        await _pool.close()
-        print("🔌 Database connection pool closed.")
+    if username not in _pools:
+        print(f"🔄 Initializing new dynamic connection pool for tenant '{username}'...")
+        _pools[username] = await asyncpg.create_pool(
+            host=host,
+            port=port,
+            database=database,
+            user=username,
+            password=password,
+            min_size=1,   
+            max_size=5,   
+        )
+        print(f"✅ Active pool established for '{username}'.")
+    
+    return _pools[username]
 
-async def run_query(sql: str, params=None):
+async def close_all_pools():
+    """Gracefully closes all tenant connection pools. Called on Server shutdown."""
+    global _pools
+    for username, pool in _pools.items():
+        await pool.close()
+    _pools.clear()
+    print("🔌 All tenant database connection pools closed.")
+
+async def run_query(sql: str, params=None, db_user: str = None, db_pass: str = None):
     """
-    Execute a read-only SQL query using a pooled connection.
-    The connection is automatically returned to the pool when done.
+    Executes a read-only SQL query explicitly bounded to a specific tenant connection pool.
     """
-    # Enforce read-only constraint
     forbidden_keywords = ["INSERT ", "UPDATE ", "DELETE ", "DROP ", "ALTER ", "TRUNCATE "]
     if any(keyword in sql.upper() for keyword in forbidden_keywords):
         raise ValueError("Only SELECT queries are allowed.")
 
-    # Borrow a connection from the pool, run the query, then return it automatically
-    async with _pool.acquire() as conn:
+    pool = await get_pool(db_user, db_pass)
+    
+    async with pool.acquire() as conn:
         rows = await conn.fetch(sql, *(params or []))
-        # asyncpg returns Record objects — convert to plain dicts for JSON serialisation
         return [dict(row) for row in rows]

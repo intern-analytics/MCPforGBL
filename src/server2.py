@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.auth import verify_api_key
-from src.db import init_pool, close_pool
+from src.db import close_all_pools
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 import uvicorn
@@ -14,10 +14,9 @@ from src.tools import register_tools
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create the DB pool on startup, close it cleanly on shutdown."""
-    await init_pool()
+    """Dynamic connection pooling uses lazy loading, so we only handle the shutdown."""
     yield
-    await close_pool()
+    await close_all_pools()
 
 # Create the MCP server instance
 app = Server("brand-mcp-server")
@@ -47,18 +46,15 @@ async def root():
 
 @fastapi_app.get("/health")
 async def health():
-    """Reports the live status of the server and the database connection pool."""
-    from src.db import _pool
-    if _pool is None:
-        return JSONResponse({"status": "unhealthy", "pool": "not initialized"}, status_code=503)
+    """Reports the live status of the server and the database connection pools."""
+    from src.db import _pools
+    total = sum(p.get_size() for p in _pools.values())
+    idle = sum(p.get_idle_size() for p in _pools.values())
     return JSONResponse({
         "status": "healthy",
-        "pool": {
-            "size": _pool.get_size(),         # total connections currently in the pool
-            "idle": _pool.get_idle_size(),    # connections available right now
-            "min_size": _pool.get_min_size(),
-            "max_size": _pool.get_max_size(),
-        }
+        "pools_active": len(_pools),
+        "total_connections": total,
+        "total_idle": idle
     })
 
 @fastapi_app.get("/sse")
@@ -73,7 +69,7 @@ async def handle_sse(request: Request, token: str = Depends(verify_api_key)):
         )
 
 @fastapi_app.post("/messages")
-async def handle_messages(request: Request):
+async def handle_messages(request: Request, token_data: dict = Depends(verify_api_key)):
     """Endpoint for MCP clients to POST incoming messages."""
     await sse.handle_post_message(request.scope, request.receive, request._send)
 

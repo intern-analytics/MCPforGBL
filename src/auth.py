@@ -21,39 +21,44 @@ def save_keys(keys: dict):
     with open(API_KEYS_FILE, "w") as f:
         json.dump(keys, f, indent=2)
 
-def generate_api_key(client_name: str) -> str:
+def generate_api_key(db_user: str, db_pass: str) -> str:
     keys = load_keys()
     
-    # Generate a random 32-byte hex string (64 characters long)
+    # Enforce uniqueness mapping: one API key per exact DB user mapped
+    for key, data in keys.items():
+        if isinstance(data, dict) and data.get("db_user") == db_user:
+            raise ValueError(f"db_user '{db_user}' is already registered to an existing key.")
+    
+    # Generate a random 32-byte hex string
     new_key = "gbl-" + secrets.token_hex(32)
     
-    keys[client_name] = new_key
+    keys[new_key] = {
+        "db_user": db_user,
+        "db_pass": db_pass
+    }
     save_keys(keys)
-    
-    print(f"✅ Generated new API key for '{client_name}':")
-    print(new_key)
-    print("\nIMPORTANT: Store this key securely. It is now active.")
     return new_key
 
-def revoke_api_key(client_name: str):
+def revoke_api_key(db_user: str) -> bool:
     keys = load_keys()
-    if client_name in keys:
-        del keys[client_name]
-        save_keys(keys)
-        print(f"❌ Revoked API key for '{client_name}'. Access is now denied.")
-    else:
-        print(f"⚠️  No API key found for '{client_name}'.")
+    
+    for key, data in list(keys.items()):
+        # Handle backwards compatibility with flat string mappings
+        target = data.get("db_user") if isinstance(data, dict) else data
+        if target == db_user:
+            del keys[key]
+            save_keys(keys)
+            return True
+    return False
 
 async def verify_api_key(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    # 1. Try to get token from Authorization header
     token = None
     if credentials:
         token = credentials.credentials
     
-    # 2. If not in header, look in the URL (?token=...)
     if not token:
         token = request.query_params.get("token")
     
@@ -65,39 +70,17 @@ async def verify_api_key(
         )
     
     keys = load_keys()
-    if token not in keys.values():
+    data = keys.get(token)
+    
+    if not data or not isinstance(data, dict):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    return token
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Manage MCP Server API Keys")
-    parser.add_argument("command", choices=["generate", "revoke", "list"], help="Command to run")
-    parser.add_argument("name", nargs="?", help="Name of the person/client this key is for")
+    # Map the securely fetched credentials out, securely tying them down
+    request.state.db_user = data.get("db_user")
+    request.state.db_pass = data.get("db_pass")
     
-    args = parser.parse_args()
-    
-    if args.command == "generate":
-        if not args.name:
-            print("Error: 'generate' requires a name.")
-        else:
-            generate_api_key(args.name)
-    elif args.command == "revoke":
-        if not args.name:
-            print("Error: 'revoke' requires a name.")
-        else:
-            revoke_api_key(args.name)
-    elif args.command == "list":
-        keys = load_keys()
-        if not keys:
-            print("No keys found.")
-        else:
-            print("\nActive API Keys:")
-            for name, key in keys.items():
-                # Show only first 8 chars for security
-                print(f"  {name}: {key[:12]}...")
+    return data

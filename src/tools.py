@@ -39,10 +39,20 @@ def register_tools(server: Server):
     ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
         arguments = arguments or {}
 
+        # Safely pull context from MCP Request state
+        request = getattr(server, "request_context", None)
+        db_user = None
+        db_pass = None
+        if request and hasattr(request, "state"):
+            db_user = getattr(request.state, "db_user", None)
+            db_pass = getattr(request.state, "db_pass", None)
+
         if name == "list_tables":
             try:
                 results = await run_query(
-                    "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog')"
+                    "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog')",
+                    db_user=db_user,
+                    db_pass=db_pass
                 )
                 return [types.TextContent(type="text", text=json.dumps(results, indent=2))]
             except Exception as e:
@@ -53,7 +63,7 @@ def register_tools(server: Server):
             if not sql:
                 raise ValueError("sql argument is required")
             try:
-                results = await run_query(sql)
+                results = await run_query(sql, db_user=db_user, db_pass=db_pass)
                 return [types.TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
             except Exception as e:
                 return [types.TextContent(type="text", text=f"Error executing query: {e}")]
