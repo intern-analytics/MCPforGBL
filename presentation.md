@@ -48,8 +48,8 @@ Our MCP server is deployed remotely for maximum security and availability.
 We built this from the ground up to support multiple brands securely:
 
 - **Strict Access Control:** Every connection requires a highly secure `Bearer Token` API Key (e.g., `gbl-xyz123`). 
-- **Revocation:** If a key is compromised, or a vendor leaves, we can instantly revoke their specific key via our CLI without affecting anyone else.
-- **Data Scoping:** The infrastructure is prepared for multi-tenancy. Using the API key, the server identifies the user and will auto-inject filters (like `WHERE brand_id = X`) to ensure isolated data access.
+- **Revocation:** If a key is compromised, or a vendor leaves, we instantly revoke their isolated access via our internal Admin API (`localhost:8001`).
+- **Data Scoping:** The infrastructure natively achieves multi-tenancy. When an API key hits the server, a dynamic database connection pool is instantly spun up uniquely mapped to the isolated PostgreSQL `db_user` associated with the token. Brand A physically cannot query Brand B's data at the database level.
 - **Read-Only:** The database user given to the MCP server strictly only possesses `SELECT` permissions.
 
 ---

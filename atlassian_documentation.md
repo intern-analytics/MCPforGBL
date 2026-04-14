@@ -8,13 +8,13 @@ This document provide the setup, configuration, and architectural details for th
 ## 🔒 Security & Authentication
 The server implements **Bearer Token Authentication** to ensure only authorized clients can interact with the database.
 
-### Key Management
-Admins can manage access keys using the `src/auth.py` utility:
-- **Generate Key**: `python -m src.auth generate "BrandName"`
-- **List Keys**: `python -m src.auth list`
-- **Revoke Key**: `python -m src.auth revoke "BrandName"`
+### Key Management (Admin API)
+Admins manage tenant access using the local REST API running on port `8001`.
+- **Start API**: `python3 -m src.admin_api` (binds strictly to localhost)
+- **Generate Key**: `curl -X POST http://127.0.0.1:8001/keys/generate -H "Content-Type: application/json" -d '{"db_user": "tenant_user", "db_pass": "pass"}'`
+- **Revoke Key**: `curl -X DELETE http://127.0.0.1:8001/keys/tenant_user`
 
-Keys are stored in `api_keys.json` (gitignored for security) and use the `gbl-` prefix.
+Keys are stored in `api_keys.json` (gitignored). The system dynamically instantiates isolated PostgreSQL connection pools tied exactly to the `db_user` attached to the requested key.
 
 ---
 
@@ -36,12 +36,12 @@ fastapi_app = FastAPI(title="Brand MCP HTTP/SSE Server")
 
 @fastapi_app.get("/sse")
 async def handle_sse(request: Request, token: str = Depends(verify_api_key)):
-    async with sse.connect_sse(request.scope, request.receive, request._send) as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
+    # Authenticates and locks session logic securely
+    async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+        await app.run(streams[0], streams[1], app.create_initialization_options())
 
-@fastapi_app.post("/messages")
-async def handle_messages(request: Request):
-    await sse.handle_post_message(request.scope, request.receive, request._send)
+# Hosted as an ASGI app wrapper to natively support Session extraction from Claude Web requests dropping URL query parameters.
+fastapi_app.mount("/messages", custom_messages_app)
 ```
 
 ---

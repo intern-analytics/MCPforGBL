@@ -18,7 +18,16 @@ source .venv/bin/activate  # Linux/EC2
 To provision unique database tenants to separate keys, we host an internal Admin REST API.
 This API handles secrets, so it should **only** be accessed from localhost on your EC2 instance (binds to `:8001`).
 
-To start the Admin API:
+### Option A: Use it securely locally via SSH Tunneling (Recommended)
+You can build a secure tunnel from your Windows PC directly to your EC2 instance so you can interact with the Admin API from your own local browser (like Swagger UI) or local terminal smoothly:
+```powershell
+# Run this on your local Windows PC
+ssh -i "path/to/your/key.pem" -L 8001:127.0.0.1:8001 ubuntu@YOUR_EC2_IP
+```
+Now, you can interact with the API or view the Swagger UI right from your local machine: `http://127.0.0.1:8001/docs`
+
+### Option B: Use it directly on EC2
+To start the Admin API on EC2:
 ```bash
 python3 -m src.admin_api
 ```
