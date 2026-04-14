@@ -73,14 +73,14 @@ async def handle_sse(request: Request, token_data: dict = Depends(verify_api_key
         diff = list(after_keys - before_keys)
         if diff:
             session_id = diff[0]
-            active_sessions[str(session_id)] = token_data
+            active_sessions[session_id.hex] = token_data
             
     try:
         await app.run(streams[0], streams[1], app.create_initialization_options())
     finally:
         await ctx.__aexit__(None, None, None)
         if diff:
-            active_sessions.pop(str(session_id), None)
+            active_sessions.pop(session_id.hex, None)
 
 async def custom_messages_app(scope, receive, send):
     """An ASGI wrapper enabling dynamic Auth extraction for Claude Web UI."""
