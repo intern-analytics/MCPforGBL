@@ -154,10 +154,11 @@ If you prefer to connect directly to the EC2 instance's IP without using the Duc
 
 ## 📈 Scalability Roadmap
 
-The server is architected to support multiple brands under one deployment:
-- **Key-Based Context**: Mapping API keys to specific brand column filters.
-- **Query Scoping**: Auto-injecting `WHERE brand_id = '...'` into all incoming queries.
-- **Audit Logs**: Access logging located in `access.log` to monitor which brands are querying at what time.
+Our platform is designed to scale securely and efficiently through a robust, role-based access control system.
+
+We plan to scale user management by generating **separate, dedicated API keys for each user/tenant**. In our architecture, the API key acts as more than just an authentication token—it inherently defines a user's complete permission profile. The key itself tells the server exactly how much access the user has.
+
+This approach allows us to tightly enforce database interactions and tool availability based on **limited-access accounts** and customized **skill files**, ensuring that each user only interacts with the data and capabilities they are explicitly authorized to use.
 
 ---
 
