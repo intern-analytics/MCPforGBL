@@ -45,6 +45,22 @@ async def root():
     """A simple root endpoint to verify the server is running."""
     return JSONResponse({"status": "brand-mcp-server running directly on FastAPI HTTP/SSE"})
 
+@fastapi_app.get("/health")
+async def health():
+    """Reports the live status of the server and the database connection pool."""
+    from src.db import _pool
+    if _pool is None:
+        return JSONResponse({"status": "unhealthy", "pool": "not initialized"}, status_code=503)
+    return JSONResponse({
+        "status": "healthy",
+        "pool": {
+            "size": _pool.get_size(),         # total connections currently in the pool
+            "idle": _pool.get_idle_size(),    # connections available right now
+            "min_size": _pool.get_min_size(),
+            "max_size": _pool.get_max_size(),
+        }
+    })
+
 @fastapi_app.get("/sse")
 async def handle_sse(request: Request, token: str = Depends(verify_api_key)):
     """The main Server-Sent Events endpoint for MCP clients."""
