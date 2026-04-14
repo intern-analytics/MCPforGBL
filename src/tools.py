@@ -41,7 +41,7 @@ def register_tools(server: Server):
 
         if name == "list_tables":
             try:
-                results = run_query(
+                results = await run_query(
                     "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog')"
                 )
                 return [types.TextContent(type="text", text=json.dumps(results, indent=2))]
@@ -53,7 +53,7 @@ def register_tools(server: Server):
             if not sql:
                 raise ValueError("sql argument is required")
             try:
-                results = run_query(sql)
+                results = await run_query(sql)
                 return [types.TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
             except Exception as e:
                 return [types.TextContent(type="text", text=f"Error executing query: {e}")]

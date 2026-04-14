@@ -1,14 +1,23 @@
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.auth import verify_api_key
+from src.db import init_pool, close_pool
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 import uvicorn
 
 # Import the existing tool registration from your src directory
 from src.tools import register_tools
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Create the DB pool on startup, close it cleanly on shutdown."""
+    await init_pool()
+    yield
+    await close_pool()
 
 # Create the MCP server instance
 app = Server("brand-mcp-server")
@@ -19,8 +28,8 @@ register_tools(app)
 # Initialize the SSE transport and tell it where POST messages will arrive
 sse = SseServerTransport("/messages")
 
-# Build the FastAPI application
-fastapi_app = FastAPI(title="Brand MCP HTTP/SSE Server")
+# Build the FastAPI application — lifespan manages pool startup/shutdown
+fastapi_app = FastAPI(title="Brand MCP HTTP/SSE Server", lifespan=lifespan)
 
 # Add CORS middleware to allow connections from claude.ai (and eventually your UI domain)
 fastapi_app.add_middleware(
