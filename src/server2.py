@@ -9,7 +9,6 @@ from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 import uvicorn
 
-# Import the existing tool registration from your src directory
 from src.tools import register_tools
 
 @asynccontextmanager
@@ -24,13 +23,13 @@ app = Server("brand-mcp-server")
 # Register your existing tools with the server
 register_tools(app)
 
-# Initialize the SSE transport and tell it where POST messages will arrive
+# Initialize the SSE transport
 sse = SseServerTransport("/messages")
 
-# Build the FastAPI application — lifespan manages pool startup/shutdown
+# Build the FastAPI application
 fastapi_app = FastAPI(title="Brand MCP HTTP/SSE Server", lifespan=lifespan)
 
-# Add CORS middleware to allow connections from claude.ai (and eventually your UI domain)
+# Add CORS middleware 
 fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://claude.ai", "http://localhost:5173", "http://localhost:3000"], 
@@ -38,6 +37,10 @@ fastapi_app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Active Session Bridge (To support Claude Web UI parameter dropping)
+active_sessions = {}
+sse_lock = asyncio.Lock()
 
 @fastapi_app.get("/")
 async def root():
@@ -58,20 +61,45 @@ async def health():
     })
 
 @fastapi_app.get("/sse")
-async def handle_sse(request: Request, token: str = Depends(verify_api_key)):
+async def handle_sse(request: Request, token_data: dict = Depends(verify_api_key)):
     """The main Server-Sent Events endpoint for MCP clients."""
-    # SseServerTransport.connect_sse requires the ASGI scope, receive, and send callables
-    async with sse.connect_sse(
-        request.scope, request.receive, request._send
-    ) as (read_stream, write_stream):
-        await app.run(
-            read_stream, write_stream, app.create_initialization_options()
-        )
+    # We securely bind the verified API token context to the actual internal session UUID stream
+    async with sse_lock:
+        before_keys = set(sse._read_stream_writers.keys())
+        ctx = sse.connect_sse(request.scope, request.receive, request._send)
+        streams = await ctx.__aenter__()
+        
+        after_keys = set(sse._read_stream_writers.keys())
+        diff = list(after_keys - before_keys)
+        if diff:
+            session_id = diff[0]
+            active_sessions[str(session_id)] = token_data
+            
+    try:
+        await app.run(streams[0], streams[1], app.create_initialization_options())
+    finally:
+        await ctx.__aexit__(None, None, None)
+        if diff:
+            active_sessions.pop(str(session_id), None)
 
-@fastapi_app.post("/messages")
-async def handle_messages(request: Request, token_data: dict = Depends(verify_api_key)):
-    """Endpoint for MCP clients to POST incoming messages."""
-    await sse.handle_post_message(request.scope, request.receive, request._send)
+async def custom_messages_app(scope, receive, send):
+    """An ASGI wrapper enabling dynamic Auth extraction for Claude Web UI."""
+    request = Request(scope)
+    session_id = request.query_params.get("session_id")
+    
+    if not session_id or session_id not in active_sessions:
+        response = JSONResponse({"detail": "Unauthorized session"}, status_code=401)
+        return await response(scope, receive, send)
+        
+    token_data = active_sessions[session_id]
+    scope.setdefault("state", {})
+    scope["state"]["db_user"] = token_data.get("db_user")
+    scope["state"]["db_pass"] = token_data.get("db_pass")
+    
+    await sse.handle_post_message(scope, receive, send)
+
+# Mount it natively entirely bypassing FastAPI runtime execution wrappers!
+fastapi_app.mount("/messages", custom_messages_app)
 
 if __name__ == "__main__":
     print("Starting Brand MCP SSE Server on http://0.0.0.0:8000")
