@@ -1,8 +1,3 @@
----
-theme: default
-class: text-center
----
-
 # 🚀 Unlocking the GBL Data Lake
 ## Integrating AI with the Model Context Protocol (MCP)
 

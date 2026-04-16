@@ -1,4 +1,4 @@
-# Brand MCP Server Documentation (GBL Data Lake)
+# MCP for GBL
 
 ## Overview
 This document provide the setup, configuration, and architectural details for the **MCP for GBL** Server. The server provides Claude with secure access to the GBL Postgres database. It runs remotely as a FastAPI background service and exposes an authenticated HTTP/SSE (Server-Sent Events) endpoint.
