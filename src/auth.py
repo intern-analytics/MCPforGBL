@@ -1,6 +1,7 @@
 import json
 import os
 import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -32,9 +33,14 @@ def generate_api_key(db_user: str, db_pass: str) -> str:
     # Generate a random 32-byte hex string
     new_key = "gbl-" + secrets.token_hex(32)
     
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=90)
+    
     keys[new_key] = {
         "db_user": db_user,
-        "db_pass": db_pass
+        "db_pass": db_pass,
+        "created_at": now.isoformat(),
+        "expires_at": expires.isoformat()
     }
     save_keys(keys)
     return new_key
@@ -50,6 +56,18 @@ def revoke_api_key(db_user: str) -> bool:
             save_keys(keys)
             return True
     return False
+
+def revalidate_api_key(db_user: str) -> dict | None:
+    keys = load_keys()
+    
+    for key, data in keys.items():
+        if isinstance(data, dict) and data.get("db_user") == db_user:
+            now = datetime.now(timezone.utc)
+            expires = now + timedelta(days=90)
+            data["expires_at"] = expires.isoformat()
+            save_keys(keys)
+            return data
+    return None
 
 async def verify_api_key(
     request: Request,
@@ -78,6 +96,27 @@ async def verify_api_key(
             detail="Invalid API key",
             headers={"WWW-Authenticate": "Bearer"},
         )
+        
+    now = datetime.now(timezone.utc)
+    expires_at_str = data.get("expires_at")
+    
+    if not expires_at_str:
+        # Migration: set expiry to 90 days from now
+        expires = now + timedelta(days=90)
+        data["created_at"] = now.isoformat()
+        data["expires_at"] = expires.isoformat()
+        save_keys(keys)
+    else:
+        try:
+            expires_at = datetime.fromisoformat(expires_at_str)
+            if now > expires_at:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="API Key Expired. Please revalidate.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except ValueError:
+            pass # Ignore invalid formats for now
     
     # Map the securely fetched credentials out, securely tying them down
     request.state.db_user = data.get("db_user")

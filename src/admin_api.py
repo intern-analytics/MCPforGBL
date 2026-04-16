@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
-from src.auth import generate_api_key, revoke_api_key, load_keys
+from datetime import datetime, timezone
+from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key
 
 app = FastAPI(title="Brand MCP Server - Internal Admin API")
 
@@ -24,12 +25,27 @@ async def api_generate_key(payload: GenerateRequest):
 async def api_list_keys():
     keys = load_keys()
     safe_list = []
+    now = datetime.now(timezone.utc)
     
     for key, data in keys.items():
         if isinstance(data, dict):
+            status_str = "Active"
+            expires_at_str = data.get("expires_at")
+            if expires_at_str:
+                try:
+                    expires_at = datetime.fromisoformat(expires_at_str)
+                    if now > expires_at:
+                        status_str = "Expired"
+                except ValueError:
+                    status_str = "Unknown"
+            else:
+                status_str = "Active (Pending Migration)"
+
             safe_list.append({
                 "db_user": data.get("db_user"),
-                "key_prefix": key[:8] + "..." if key else None
+                "key_prefix": key[:8] + "..." if key else None,
+                "expires_at": expires_at_str,
+                "status": status_str
             })
     return {"managed_keys": safe_list}
 
@@ -38,6 +54,18 @@ async def api_revoke_key(db_user: str):
     success = revoke_api_key(db_user)
     if success:
         return {"success": True, "message": f"Successfully revoked access for db_user '{db_user}'"}
+    else:
+        raise HTTPException(status_code=404, detail="No key found for that db_user")
+
+@app.put("/keys/{db_user}/revalidate")
+async def api_revalidate_key(db_user: str):
+    data = revalidate_api_key(db_user)
+    if data:
+        return {
+            "success": True, 
+            "message": f"Successfully revalidated access for db_user '{db_user}'", 
+            "new_expiry": data.get("expires_at")
+        }
     else:
         raise HTTPException(status_code=404, detail="No key found for that db_user")
 
