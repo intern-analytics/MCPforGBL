@@ -5,6 +5,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from contextvars import ContextVar
+
+# Context variables for per-request database credentials
+db_user_var: ContextVar[str | None] = ContextVar("db_user_var", default=None)
+db_pass_var: ContextVar[str | None] = ContextVar("db_pass_var", default=None)
+
 
 API_KEYS_FILE = Path(__file__).parent.parent / "api_keys.json"
 security = HTTPBearer(auto_error=False)

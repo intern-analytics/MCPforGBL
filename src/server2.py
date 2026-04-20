@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from src.auth import verify_api_key
+from src.auth import verify_api_key, db_user_var, db_pass_var
 from src.db import close_all_pools
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
@@ -63,6 +63,9 @@ async def health():
 @fastapi_app.get("/sse")
 async def handle_sse(request: Request, token_data: dict = Depends(verify_api_key)):
     """The main Server-Sent Events endpoint for MCP clients."""
+    # Set context variables for the current request
+    db_user_var.set(token_data.get("db_user"))
+    db_pass_var.set(token_data.get("db_pass"))
     # We securely bind the verified API token context to the actual internal session UUID stream
     async with sse_lock:
         before_keys = set(sse._read_stream_writers.keys())
@@ -95,6 +98,10 @@ async def custom_messages_app(scope, receive, send):
     scope.setdefault("state", {})
     scope["state"]["db_user"] = token_data.get("db_user")
     scope["state"]["db_pass"] = token_data.get("db_pass")
+    
+    # Set context variables for the POST message request
+    db_user_var.set(token_data.get("db_user"))
+    db_pass_var.set(token_data.get("db_pass"))
     
     await sse.handle_post_message(scope, receive, send)
 

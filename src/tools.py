@@ -4,6 +4,7 @@ import json
 import mcp.types as types
 from mcp.server import Server
 from src.db import run_query
+from src.auth import db_user_var, db_pass_var
 
 def register_tools(server: Server):
     @server.list_tools()
@@ -39,13 +40,9 @@ def register_tools(server: Server):
     ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
         arguments = arguments or {}
 
-        # Safely pull context from MCP Request state
-        request = getattr(server, "request_context", None)
-        db_user = None
-        db_pass = None
-        if request and hasattr(request, "state"):
-            db_user = getattr(request.state, "db_user", None)
-            db_pass = getattr(request.state, "db_pass", None)
+        # Retrieve credentials from the verified context
+        db_user = db_user_var.get()
+        db_pass = db_pass_var.get()
 
         if name == "list_tables":
             try:

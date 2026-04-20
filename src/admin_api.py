@@ -1,14 +1,34 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
+import os
 from datetime import datetime, timezone
 from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key
 
 app = FastAPI(title="Brand MCP Server - Internal Admin API")
 
+# Ensure static directory exists
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
+
+# Mount static files for the UI
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 class GenerateRequest(BaseModel):
     db_user: str
     db_pass: str
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard():
+    """Serves the Admin UI dashboard."""
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r") as f:
+            return f.read()
+    return "<h1>Admin UI Not Found</h1><p>Please ensure src/static/index.html exists.</p>"
 
 @app.post("/keys/generate")
 async def api_generate_key(payload: GenerateRequest):
@@ -70,5 +90,6 @@ async def api_revalidate_key(db_user: str):
         raise HTTPException(status_code=404, detail="No key found for that db_user")
 
 if __name__ == "__main__":
-    print("Starting Admin API strictly on loopback (127.0.0.1:8001)")
+    print("\nAdmin Dashboard available at: http://127.0.0.1:8001/admin")
+    print("Server running strictly on loopback for security.\n")
     uvicorn.run("src.admin_api:app", host="127.0.0.1", port=8001, reload=True)
