@@ -6,13 +6,21 @@ A secure, multi-tenant Model Context Protocol (MCP) server for accessing brand-s
 
 This server uses **Bearer Token Authentication**. Access to the `/sse` and `/messages` endpoints requires a valid API key with the `gbl-` prefix.
 
+### 🛠️ Environment Activation
+Before running any commands, ensure your virtual environment is active:
+
+**Linux / EC2:**
+```bash
+source .venv/bin/activate
+```
+
+**Windows (Local):**
+```powershell
+.\.venv\Scripts\activate
+```
+
 ### Key Management CLI
 Manage your keys locally or on EC2 using the built-in auth module:
-
-```bash
-# Activate your environment first
-source .venv/bin/activate  # Linux/EC2
-.\.venv\Scripts\activate   # Windows
 
 ### 6. Manage Multi-Tenant API Keys (Admin API)
 To provision unique database tenants to separate keys, we host an internal Admin REST API.
@@ -47,6 +55,12 @@ Other utility endpoints:
 ---
 
 ## 🖥️ EC2 Deployment (Persistence with systemd)
+
+### SSH Access
+To access the EC2 instance remotely:
+```bash
+ssh ubuntu@13.234.225.106 -i mcp_server_gbl.pem
+```
 
 For production, we use `systemd` to ensure the server starts automatically on reboot and restarts if it crashes.
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import asyncpg
 from dotenv import load_dotenv
 
@@ -19,7 +20,7 @@ async def get_pool(db_user: str, db_pass: str) -> asyncpg.Pool:
     password = db_pass or os.getenv("DB_PASS", "password")
 
     if username not in _pools:
-        print(f"🔄 Initializing new dynamic connection pool for tenant '{username}'...")
+        print(f"Initializing new dynamic connection pool for tenant '{username}'...", file=sys.stderr)
         _pools[username] = await asyncpg.create_pool(
             host=host,
             port=port,
@@ -29,7 +30,7 @@ async def get_pool(db_user: str, db_pass: str) -> asyncpg.Pool:
             min_size=1,   
             max_size=5,   
         )
-        print(f"✅ Active pool established for '{username}'.")
+        print(f"Active pool established for '{username}'.", file=sys.stderr)
     
     return _pools[username]
 
@@ -39,7 +40,7 @@ async def close_all_pools():
     for username, pool in _pools.items():
         await pool.close()
     _pools.clear()
-    print("🔌 All tenant database connection pools closed.")
+    print("All tenant database connection pools closed.", file=sys.stderr)
 
 async def run_query(sql: str, params=None, db_user: str = None, db_pass: str = None):
     """

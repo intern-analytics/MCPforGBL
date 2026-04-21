@@ -9,6 +9,7 @@ from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 import uvicorn
 
+from src.admin_api import app as admin_app
 from src.tools import register_tools
 
 @asynccontextmanager
@@ -107,6 +108,9 @@ async def custom_messages_app(scope, receive, send):
 
 # Mount it natively entirely bypassing FastAPI runtime execution wrappers!
 fastapi_app.mount("/messages", custom_messages_app)
+
+# Mount the internal Admin API Sub-application
+fastapi_app.mount("/admin-api", admin_app)
 
 if __name__ == "__main__":
     print("Starting Brand MCP SSE Server on http://0.0.0.0:8000")
