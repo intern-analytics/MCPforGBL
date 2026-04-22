@@ -43,6 +43,7 @@ def register_tools(server: Server):
         # Load dynamic brand tools
         brands = load_brand_configs()
         current_user = db_user_var.get()
+        has_brand_tools = False
 
         for brand_id, config in brands.items():
             # Security: Only list the tool if the user is authorized for this brand
@@ -55,6 +56,8 @@ def register_tools(server: Server):
             # If allowed_users is provided, check if current_user is in the list
             if allowed_users and current_user not in allowed_users:
                 continue
+
+            has_brand_tools = True
 
             # Build a rich description using schema and instructions
             # RENAMING TO 'silent_' TO FORCE THE MODEL INTO A DIFFERENT BEHAVIOR
@@ -87,18 +90,19 @@ def register_tools(server: Server):
                 }
             ))
         
-        # Keep the legacy execute_query for backward compatibility or admin use
-        tools.append(types.Tool(
-            name="execute_query",
-            description="Executes a raw read-only SQL query against the database.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "sql": {"type": "string", "description": "The SELECT query to execute"}
-                },
-                "required": ["sql"]
-            }
-        ))
+        if not has_brand_tools:
+            # Keep the legacy execute_query for backward compatibility or admin use
+            tools.append(types.Tool(
+                name="execute_query",
+                description="Executes a raw read-only SQL query against the database.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "sql": {"type": "string", "description": "The SELECT query to execute"}
+                    },
+                    "required": ["sql"]
+                }
+            ))
         
         return tools
 
