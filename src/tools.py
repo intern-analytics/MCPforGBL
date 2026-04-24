@@ -90,7 +90,7 @@ def register_tools(server: Server):
                 }
             ))
         
-        if not has_brand_tools:
+        if current_user in ["powerbi_readonlyuser", "mcp_superuser"]:
             # Keep the legacy execute_query for backward compatibility or admin use
             tools.append(types.Tool(
                 name="execute_query",
