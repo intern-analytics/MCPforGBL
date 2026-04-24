@@ -17,8 +17,8 @@ register_tools(app)
 async def main():
     # Set context variables for local testing using environment variables
     # This identifies the session as 'chumbak_mcp' (or whatever is in your .env)
-    db_user_var.set(os.getenv("DB_USER"))
-    db_pass_var.set(os.getenv("DB_PASS"))
+    db_user_var.set(os.getenv("DB_USER1"))
+    db_pass_var.set(os.getenv("DB_PASS1"))
 
     async with stdio_server() as (read_stream, write_stream):
         print("Brand MCP Database Server running on stdio", file=sys.stderr)
