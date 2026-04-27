@@ -1,0 +1,19 @@
+[[[ DATAWAREHOUSE SCHEMA ]]]
+- chumbak_in_unicommerce_saleorders: Revenue and orders. Filter: Status <> CANCELLED, Channel <> WONDERSOFT/Custom/Quickcom-D2C. Use business_segment CASE to split by D2C, B2B, or Mall. Online units = COUNT(*).
+- chumbak_ebo_sales: Offline Store Revenue (Wondersoft). Join via LTRIM("EANCode", ''''). Cast numbers ::numeric.
+- chumbak_in_unicommerce_inventorysnapshot: Warehouse stock. Math: Quantity - Blocked - Damaged - NotFound. Filter Snapshot Date = MAX date. MANDATORY: inv."Facility" NOT LIKE 'EBO-%'.
+- chumbak_in_unicommerce_purchaseorders: Supply Chain. Note: "Recieved Quantity" (typo).
+- chumbak_in_unicommerce_grn / gatepass: Vendor quality and inwarding.
+- chumbak_in_unicommerce_itemmaster: Dimension table. Join via "Product Code" (primary) or "AlternateProductCodes" -> "EAN" (fallback).
+- chumbak_ebo_inventory: Offline EBO store-level inventory.
+
+[[[ PUBLIC SCHEMA — QUICK COMMERCE ]]]
+- public.zepto_sales: Zepto orders. brand_name IN ('Chumbak'). Revenue = selling_price. Units = sales_qty_units. Join via ean.
+- public.zepto_inventory: Zepto dark store inventory. brand_name = 'Chumbak'. Stock = units. Join via ean or sku_code.
+- public.blinkit_sales: Blinkit orders. brand IN ('chumbak'). Revenue = mrp * qty_sold (no selling_price). Join via item_id.
+- public.blinkit_soh: Blinkit stock-on-hand. brand = 'chumbak'. Stock = backend_inv_qty + frontend_inv_qty. Date column = created_at (date type).
+- public.instamart_sale: Instamart orders. brand IN ('chumbak'). Revenue = gmv. Units = units_sold. Date column = ordered_date (NOT date).
+- public.instamart_inventory: Instamart dark store inventory. brand IN ('Chumbak'). Stock = warehouse_qty_available. Join via sku_code.
+
+[[[ PUBLIC SCHEMA — MYNTRA ]]]
+- myntra_crawler_sjit_chumbak_sales: Myntra self-ship portal revenue. created_on is varchar ISO.
