@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import uvicorn
 import os
 from datetime import datetime, timezone
-from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key
+from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key, update_api_key_password
 
 app = FastAPI(title="Brand MCP Server - Internal Admin API")
 
@@ -20,6 +20,9 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 class GenerateRequest(BaseModel):
     db_user: str
     db_pass: str
+
+class UpdatePasswordRequest(BaseModel):
+    new_pass: str
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_dashboard():
@@ -85,6 +88,17 @@ async def api_revalidate_key(db_user: str):
             "success": True, 
             "message": f"Successfully revalidated access for db_user '{db_user}'", 
             "new_expiry": data.get("expires_at")
+        }
+    else:
+        raise HTTPException(status_code=404, detail="No key found for that db_user")
+
+@app.put("/keys/{db_user}/password")
+async def api_update_password(db_user: str, payload: UpdatePasswordRequest):
+    data = update_api_key_password(db_user, payload.new_pass)
+    if data:
+        return {
+            "success": True,
+            "message": f"Successfully updated password for db_user '{db_user}'"
         }
     else:
         raise HTTPException(status_code=404, detail="No key found for that db_user")

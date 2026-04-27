@@ -75,6 +75,16 @@ def revalidate_api_key(db_user: str) -> dict | None:
             return data
     return None
 
+def update_api_key_password(db_user: str, new_pass: str) -> dict | None:
+    keys = load_keys()
+    
+    for key, data in keys.items():
+        if isinstance(data, dict) and data.get("db_user") == db_user:
+            data["db_pass"] = new_pass
+            save_keys(keys)
+            return data
+    return None
+
 async def verify_api_key(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security)
