@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import uvicorn
 import os
 from datetime import datetime, timezone
-from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key, update_api_key_password
+from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key, update_api_key_password, update_api_key_username
 
 app = FastAPI(title="Brand MCP Server - Internal Admin API")
 
@@ -23,6 +23,9 @@ class GenerateRequest(BaseModel):
 
 class UpdatePasswordRequest(BaseModel):
     new_pass: str
+
+class UpdateUsernameRequest(BaseModel):
+    new_db_user: str
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_dashboard():
@@ -102,6 +105,20 @@ async def api_update_password(db_user: str, payload: UpdatePasswordRequest):
         }
     else:
         raise HTTPException(status_code=404, detail="No key found for that db_user")
+
+@app.patch("/keys/{db_user}/username")
+async def api_update_username(db_user: str, payload: UpdateUsernameRequest):
+    try:
+        data = update_api_key_username(db_user, payload.new_db_user)
+        if data:
+            return {
+                "success": True,
+                "message": f"Successfully renamed db_user '{db_user}' to '{payload.new_db_user}'"
+            }
+        else:
+            raise HTTPException(status_code=404, detail=f"No key found for db_user '{db_user}'")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
     print("\nAdmin Dashboard available at: http://127.0.0.1:8001/admin")

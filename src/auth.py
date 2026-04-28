@@ -85,6 +85,26 @@ def update_api_key_password(db_user: str, new_pass: str) -> dict | None:
             return data
     return None
 
+def update_api_key_username(old_db_user: str, new_db_user: str) -> dict | None:
+    """Rename the db_user on an existing API key entry.
+    
+    Returns the updated data dict on success, or None if old_db_user is not found.
+    Raises ValueError if new_db_user is already registered to another key.
+    """
+    keys = load_keys()
+    
+    # Guard: ensure the new username isn't already taken
+    for key, data in keys.items():
+        if isinstance(data, dict) and data.get("db_user") == new_db_user:
+            raise ValueError(f"db_user '{new_db_user}' is already registered to an existing key.")
+    
+    for key, data in keys.items():
+        if isinstance(data, dict) and data.get("db_user") == old_db_user:
+            data["db_user"] = new_db_user
+            save_keys(keys)
+            return data
+    return None
+
 async def verify_api_key(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security)
