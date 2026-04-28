@@ -90,7 +90,7 @@ def register_tools(server: Server):
                 }
             ))
         
-        if current_user in ["powerbi_readonlyuser"]:
+        if current_user in ["powerbi_readonlyuser", "voylla_mcp"]:
             # Keep the legacy execute_query for backward compatibility or admin use
             tools.append(types.Tool(
                 name="execute_query",
