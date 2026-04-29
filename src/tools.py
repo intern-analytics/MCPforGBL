@@ -31,14 +31,15 @@ def load_brand_configs() -> Dict[str, Dict]:
 def register_tools(server: Server):
     @server.list_tools()
     async def handle_list_tools() -> list[types.Tool]:
-        # Always include the generic tables discovery tool
-        tools = [
-            types.Tool(
+        tools = []
+        current_user = db_user_var.get()
+
+        if current_user == "powerbi_readonlyuser":
+            tools.append(types.Tool(
                 name="list_tables",
                 description="Returns a list of all accessible tables across all schemas",
                 inputSchema={"type": "object", "properties": {}}
-            )
-        ]
+            ))
 
         # Load dynamic brand tools
         brands = load_brand_configs()
@@ -115,6 +116,8 @@ def register_tools(server: Server):
         db_pass = db_pass_var.get()
 
         if name == "list_tables":
+            if db_user != "powerbi_readonlyuser":
+                raise ValueError("Unauthorized access to list_tables")
             try:
                 results = await run_query(
                     "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog')",
