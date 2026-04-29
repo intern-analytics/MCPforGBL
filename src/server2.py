@@ -25,7 +25,7 @@ app = Server("brand-mcp-server")
 register_tools(app)
 
 # Initialize the SSE transport
-sse = SseServerTransport("/messages", keep_alive_interval=15)
+sse = SseServerTransport("/messages")
 
 # Build the FastAPI application
 fastapi_app = FastAPI(title="Brand MCP HTTP/SSE Server", lifespan=lifespan)
