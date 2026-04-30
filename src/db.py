@@ -27,7 +27,7 @@ async def get_pool(db_user: str, db_pass: str) -> asyncpg.Pool:
             database=database,
             user=username,
             password=password,
-            min_size=1,   
+            min_size=3,   
             max_size=7,   
         )
         print(f"Active pool established for '{username}'.", file=sys.stderr)
