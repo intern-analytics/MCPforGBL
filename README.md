@@ -2,6 +2,38 @@
 
 A secure, multi-tenant Model Context Protocol (MCP) server for accessing brand-specific Postgres databases. This server supports both local execution and authenticated remote access via HTTP/SSE.
 
+## 🚀 Recent Updates & Enhancements
+- **Multi-Tenant Connection Pooling:** Dynamic connection pooling per database user with optimized pool limits (`min_size=3`, `max_size=7`) to prevent `ECONNREFUSED` connection timeouts on smaller EC2 instances.
+- **Analytical Expansions (Chumbak):** 
+  - Integrated **Bharatiya Mall** offline data mapping via Frangipani EBO feeds.
+  - Integrated **Clickpost** logistics tracking (orders and returns).
+  - Integrated **Myntra Ad Reports** (Daily, Product, and Placement analytics).
+  - Addressed POS export formatting issues with dynamic EAN/MRP column extraction (Batch Shift Quirk).
+
+## 📝 Brand Configuration Structure
+
+To add a new brand to the MCP server, create a JSON file inside `src/brands/` (e.g., `brand_config.json`). The JSON file dictates the specific instructions, schema context, and access rules for the AI analyst.
+
+**General Structure (`brand_config.json`):**
+```json
+{
+  "brand_id": "unique_brand_identifier",
+  "display_name": "Brand Business Insights",
+  "tool_name": "brand_insights",
+  "allowed_db_user": [
+    "brand_db_user",
+    "mcp_superuser"
+  ],
+  "description": "Short description of the AI persona and what it analyzes.",
+  "specific_instructions": "[[[ PROFESSIONAL COMMUNICATION GUIDELINES ]]]\n- Instructions on persona and tone.\n\n[[[ ANALYST LOGIC & CASTING RULES ]]]\n- Date parsing, casting rules, logic exceptions.\n\n[[[ MANDATORY FILTERS ]]]\n- Rules for excluding specific channels or testing environments.\n\n[[[ PER-TABLE COLUMN REFERENCE ]]]\n- Detailed descriptions of tables, join keys, and specific column logic.",
+  "schema_details": "[[[ SCHEMA OVERVIEW ]]]\n- High-level list of tables and their business purpose to help the AI write accurate SQL.",
+  "common_questions": [
+    "Top 10 selling SKUs for last month?",
+    "Offline vs Online revenue split?"
+  ]
+}
+```
+
 ## 🔐 Authentication & Security
 
 This server uses **Bearer Token Authentication**. Access to the `/sse` and `/messages` endpoints requires a valid API key with the `gbl-` prefix.
