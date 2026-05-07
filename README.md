@@ -49,7 +49,7 @@ This server uses **Bearer Token Authentication**. Access to the `/sse` and `/mes
 ### 🛠️ Environment Activation
 Before running any commands, ensure your virtual environment is active:
 
-**Linux / EC2:**
+**macOS / Linux / EC2:**
 ```bash
 source .venv/bin/activate
 ```
@@ -163,7 +163,9 @@ Because this server is publicly exposed via Nginx and protected with a Let's Enc
 4. Connect and query!
 
 ### Option B: Using Claude Desktop App (HTTPS)
-Update your `%APPDATA%\Claude\claude_desktop_config.json` on Windows. 
+
+#### For Windows:
+Update your `%APPDATA%\Claude\claude_desktop_config.json`. 
 
 > [!IMPORTANT]  
 > Use `C:\\PROGRA~1\\nodejs\\npx.cmd` to avoid issues with spaces in the Windows file path.
@@ -173,6 +175,24 @@ Update your `%APPDATA%\Claude\claude_desktop_config.json` on Windows.
   "mcpServers": {
     "gbl-data-lake": {
       "command": "C:\\PROGRA~1\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcpforgbl.duckdns.org/sse?token=gbl-YOUR_KEY_HERE"
+      ]
+    }
+  }
+}
+```
+
+#### For macOS:
+Update your `~/Library/Application Support/Claude/claude_desktop_config.json`.
+
+```json
+{
+  "mcpServers": {
+    "gbl-data-lake": {
+      "command": "npx",
       "args": [
         "-y",
         "mcp-remote",
