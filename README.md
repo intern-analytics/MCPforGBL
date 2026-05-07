@@ -2,13 +2,21 @@
 
 A secure, multi-tenant Model Context Protocol (MCP) server for accessing brand-specific Postgres databases. This server supports both local execution and authenticated remote access via HTTP/SSE.
 
-## 🚀 Recent Updates & Enhancements
-- **Multi-Tenant Connection Pooling:** Dynamic connection pooling per database user with optimized pool limits (`min_size=3`, `max_size=7`) to prevent `ECONNREFUSED` connection timeouts on smaller EC2 instances.
-- **Analytical Expansions (Chumbak):** 
+## 🚀 Recent Updates & Enhancements (Past 10 Days)
+
+### 🛡️ Infrastructure, Security & Scaling
+- **EC2 Stabilization & Capacity Planning:** Successfully scaled the instance capacity and implemented swap memory to manage high concurrent loads. Optimized database connection pooling (`min_size=3`, `max_size=7`) to permanently resolve `ECONNREFUSED` timeout errors.
+- **Enhanced Proxy & SSL:** Configured dual DuckDNS subdomains and optimized Nginx proxy settings to robustly support Server-Sent Events (SSE) for Claude connectivity with secure SSL certificate management.
+- **Multi-Tenant Key Management:** Hardened the brand analytical server and configured lifecycle management for authentication across all active brand servers (Chumbak, Pepe, Cee18) to ensure consistent data reporting standards.
+
+### 📊 Analytical Expansions (Chumbak, CEE18, Pepe)
+- **Amazon SP & Advertising Data:** Integrated Amazon Seller Partner (SP) data (orders, traffic, FBA inventory). Mapped Amazon (SB/SD/SP) and Myntra CPC advertising reports into `chumbak_config.json` for granular performance insights across ad placement, product, and search-term levels.
+- **Quick-Commerce Strict Segmentation:** Enforced immutable brand filters for Quick-Commerce feeds (Blinkit, Zepto, Instamart) and successfully routed Blinkit data via the DataWarehouse layer. Excluded Q-commerce D2C channels from primary sales orders to force the analytical engine to rely exclusively on dedicated raw portal feeds.
+- **B2B & EBO Channel Refinement:** Updated B2B channel exclusion lists (ETRADE, R K WorldInfocom, SHANTI COSTUMES) and excluded WONDERSOFT/Mall-based EBO channels from generic `saleorders` to ensure reliance on the dedicated `ebo_sales` raw feed. Established standardized metric rules (e.g., online unit quantity as `COUNT(*)`).
+- **Logistics & Offline Mappings:** 
   - Integrated **Bharatiya Mall** offline data mapping via Frangipani EBO feeds.
   - Integrated **Clickpost** logistics tracking (orders and returns).
-  - Integrated **Myntra Ad Reports** (Daily, Product, and Placement analytics).
-  - Addressed POS export formatting issues with dynamic EAN/MRP column extraction (Batch Shift Quirk).
+  - Addressed POS export formatting issues with dynamic EAN/MRP column extraction.
 
 ## 📝 Brand Configuration Structure
 
