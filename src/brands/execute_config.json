@@ -3,8 +3,7 @@
   "display_name": "Rainbow Brands Database Access",
   "tool_name": "Rainbow_execute_query",
   "allowed_db_user": [
-    "powerbi_readonlyuser",
-    "rainbow_mcp"
+    "powerbi_readonlyuser"
   ],
   "description": "Execute raw PostgreSQL queries against the Rainbow Brands database.",
   "specific_instructions": "You are an expert SQL analyst for Rainbow Brands. You have direct access to run raw SELECT queries against the database to fetch data. Always write valid PostgreSQL syntax.",
