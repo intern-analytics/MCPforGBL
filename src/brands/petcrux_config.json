@@ -1,19 +1,187 @@
 {
   "brand_id": "petcrux",
-  "display_name": "PetCrux Amazon Ads",
+  "display_name": "PetCrux",
   "tool_name": "PetCrux_insights",
   "allowed_db_user": [
     "powerbi_readonlyuser",
     "petcrux_mcp"
   ],
-  "description": "Professional Analyst for PetCrux Amazon Advertising & Vendor Central performance.",
-  "specific_instructions": "[[[ PROFESSIONAL COMMUNICATION GUIDELINES ]]]\n- MAINTAIN PROFESSIONAL SILENCE: Provide only the business-ready answer. Exclude all technical data-finding steps (like table schema inspections or reasoning narration).\n- EXCLUDE TECHNICAL LABELS: Do not mention internal table names (e.g., sp_v2_*, vc_*) or raw column names (orderedunits, etc.) in your narrative.\n- AUTOMATIC TRANSLATION: Ensure all data is presented in standard business terms (e.g., use 'Spend' instead of 'cost', 'Revenue' instead of 'attributedsales').\n- EXECUTIVE REPORTING: Always present data-driven answers as if generating a professional report for leadership.\n\n[[[ ANALYST LOGIC — PETCRUX CANONICAL RULES ]]]\n\n1. ASIN SCOPE (STRICT):\n   The PetCrux ASIN universe is fixed to exactly 16 ASINs. Never add, remove, or substitute ASINs. Refuse any request to query other brands' ASINs.\n   ASINs: B0CH8R499P, B0CH8PV89K, B0CH8STZHX, B07MJC2KYJ, B07NZVG8SC, B0CH8TFXB2, B07MQ65HG5, B0CH8T5QP6, B08VGKS3TG, B0C2Q1NP87, B0CJJ7C5TF, B0CG266LMC, B08XM1QHF1, B0DHL887MF, B08V8JN3DW, B0C2Q2T716.\n\n2. REVENUE MATH (FLOORED):\n   - Inorganic Revenue = SUM(attributedsales14d) from combined SP+SD.\n   - Total Revenue = GREATEST(orderedunits * selling_price, inorganic_revenue).\n   - Organic Revenue = GREATEST((orderedunits * selling_price) - inorganic_revenue, 0).\n   - Inorganic Revenue % = 100 * inorganic_revenue / NULLIF(Total Revenue, 0).\n\n3. DEDUPLICATION RULES:\n   - Sponsored Products (sp_base): ROW_NUMBER() OVER (PARTITION BY reportdate, asin, campaignid, adgroupid ORDER BY daton_batch_runtime DESC), keep rn=1.\n   - Vendor Central (vc_base): ROW_NUMBER() OVER (PARTITION BY asin, startdate ORDER BY daton_batch_runtime DESC), keep rn=1.\n\n4. DATE HANDLING:\n   - MANDATORY outer filter: WHERE cte.\"Date\" <= current_date - 2 (excludes last 2 days for data freshness).\n   - User-specified date ranges are added as AN ADDITIONAL condition on the OUTER WHERE only.\n\n5. PERFORMANCE METRICS:\n   - CTR (%) = COALESCE(ROUND(100 * clicks / NULLIF(impressions, 0), 2), 0)\n   - ROAS = COALESCE(ROUND(inorganic_revenue / NULLIF(spend, 0), 2), 0)\n   - ACOS (%) = COALESCE(ROUND(100 * spend / NULLIF(inorganic_revenue, 0), 2), 0)\n   - TACOS (%) = ROUND(100 * spend / NULLIF(Total Revenue, 0), 2)\n\n6. BUSINESS TERMINOLOGY:\n   - sp_v2_ / sd_v2_ -> 'Sponsored Products' / 'Sponsored Display'.\n   - vc_ -> 'Vendor Central'.\n   - cost -> 'Spend'.\n   - selling_price -> 'ASP' (Average Selling Price).",
-  "schema_details": "[[[ CORE DATA TABLES ]]]\n- sp_v2_... / sd_v2_...: Daily Ad performance. Use cost, impressions, clicks, attributedunitsordered14d, attributedsales14d.\n- amazon_vc_vendorsalesreportbymanufacturing: Vendor Central truth for orderedunits.\n- dbt_dsarkar.amazon_pricing: Selling price per ASIN.\n- dbt_dsarkar.Asin_Brand_Mapping: Maps ASIN to product name and category.",
+  "description": "Professional Analyst for PetCrux — covering Amazon Ads, Blinkit, Flipkart, AJIO, Quick Commerce scrapers, FBA Inventory, and Supply Chain.",
+  "specific_instructions": "[[[ PROFESSIONAL COMMUNICATION GUIDELINES ]]]\n- MAINTAIN PROFESSIONAL SILENCE: Provide only the business-ready answer. Exclude all technical data-finding steps.\n- EXCLUDE TECHNICAL LABELS: Do not mention internal table names or raw column names in your narrative.\n- AUTOMATIC TRANSLATION: Present all data in standard business terms (e.g., 'Spend' not 'cost', 'Revenue' not 'attributedsales').\n- EXECUTIVE REPORTING: Always present data-driven answers as if generating a professional report for leadership.\n\n[[[ ANALYST LOGIC — PETCRUX CANONICAL RULES ]]]\n\n1. ASIN SCOPE (STRICT):\n   The PetCrux ASIN universe is fixed to exactly 16 ASINs. Never add, remove, or substitute ASINs.\n   ASINs: B0CH8R499P, B0CH8PV89K, B0CH8STZHX, B07MJC2KYJ, B07NZVG8SC, B0CH8TFXB2, B07MQ65HG5, B0CH8T5QP6, B08VGKS3TG, B0C2Q1NP87, B0CJJ7C5TF, B0CG266LMC, B08XM1QHF1, B0DHL887MF, B08V8JN3DW, B0C2Q2T716.\n\n2. REVENUE MATH (FLOORED):\n   - Inorganic Revenue = SUM(attributedsales14d) from combined SP+SD.\n   - Total Revenue = GREATEST(orderedunits * selling_price, inorganic_revenue).\n   - Organic Revenue = GREATEST((orderedunits * selling_price) - inorganic_revenue, 0).\n   - Inorganic Revenue % = 100 * inorganic_revenue / NULLIF(Total Revenue, 0).\n\n3. DEDUPLICATION RULES:\n   - SP ads: ROW_NUMBER() OVER (PARTITION BY reportdate, asin, campaignid, adgroupid ORDER BY daton_batch_runtime DESC), keep rn=1.\n   - SD ads: same partition logic, keep rn=1.\n\n4. DATE HANDLING:\n   - MANDATORY outer filter: WHERE date <= current_date - 2 (excludes last 2 days for data freshness).\n   - User-specified date ranges are added as AN ADDITIONAL condition on the OUTER WHERE only.\n\n5. PERFORMANCE METRICS:\n   - CTR (%) = COALESCE(ROUND(100 * clicks / NULLIF(impressions, 0), 2), 0)\n   - ROAS = COALESCE(ROUND(inorganic_revenue / NULLIF(spend, 0), 2), 0)\n   - ACOS (%) = COALESCE(ROUND(100 * spend / NULLIF(inorganic_revenue, 0), 2), 0)\n   - TACOS (%) = ROUND(100 * spend / NULLIF(Total Revenue, 0), 2)\n\n6. BUSINESS TERMINOLOGY:\n   - petcrux_in_amazon_ads_sp_* -> 'Sponsored Products'\n   - petcrux_in_amazon_ads_sd_* -> 'Sponsored Display'\n   - petcrux_in_amazon_ads_sb_* -> 'Sponsored Brands'\n   - cost -> 'Spend'\n   - selling_price -> 'ASP' (Average Selling Price)\n   - goat_brand_labs_in_amazon_sp_* -> 'Amazon SP (GBL account)'",
+  "schema_details": {
+    "amazon_ads": {
+      "description": "PetCrux Amazon Advertising — Sponsored Products, Sponsored Display, Sponsored Brands",
+      "tables": [
+        {
+          "table": "DataWarehouse.petcrux_in_amazon_ads_sp_advertised_product",
+          "description": "Sponsored Products — daily performance by advertised ASIN. Key columns: date, asin, campaignid, adgroupid, impressions, clicks, cost, attributedunitsordered14d, attributedsales14d, daton_batch_runtime."
+        },
+        {
+          "table": "DataWarehouse.petcrux_in_amazon_ads_sp_search_term",
+          "description": "Sponsored Products — search term level performance. Key columns: date, searchterm, impressions, clicks, cost, attributedsales14d."
+        },
+        {
+          "table": "DataWarehouse.petcrux_in_amazon_ads_sd_advertised_product",
+          "description": "Sponsored Display — daily performance by advertised ASIN. Same key columns as SP advertised product."
+        },
+        {
+          "table": "DataWarehouse.petcrux_in_amazon_ads_sd_search_term",
+          "description": "Sponsored Display — search term level performance."
+        },
+        {
+          "table": "DataWarehouse.petcrux_in_amazon_ads_sb_search_term",
+          "description": "Sponsored Brands — search term level performance."
+        }
+      ]
+    },
+    "amazon_sp_seller": {
+      "description": "Amazon Seller Central data via GBL account — FBA inventory, orders, sales & traffic",
+      "tables": [
+        {
+          "table": "DataWarehouse.goat_brand_labs_in_amazon_sp_fba_inventory",
+          "description": "FBA inventory levels per ASIN. Key columns: asin, fnsku, condition, warehouse, quantity, daton_batch_runtime."
+        },
+        {
+          "table": "DataWarehouse.goat_brand_labs_in_amazon_sp_orders",
+          "description": "Amazon SP order-level data. Key columns: order_id, asin, quantity, item_price, order_status, purchase_date."
+        },
+        {
+          "table": "DataWarehouse.goat_brand_labs_in_amazon_sp_sales_and_traffic",
+          "description": "Aggregated daily sales and traffic by ASIN. Key columns: date, asin, ordered_units, ordered_revenue, sessions, page_views."
+        }
+      ]
+    },
+    "pricing": {
+      "description": "Pricing data across Amazon, Flipkart, and AJIO",
+      "tables": [
+        {
+          "table": "dbt_dsarkar.amazon_pricing",
+          "description": "Selling price per ASIN on Amazon. Use as ASP source for revenue calculations."
+        },
+        {
+          "table": "dbt_dsarkar.blinkit_pricing",
+          "description": "Blinkit product pricing. Join on SKU/EAN."
+        },
+        {
+          "table": "DataWarehouse.ajio_pricing",
+          "description": "AJIO platform pricing data."
+        },
+        {
+          "table": "DataWarehouse.flipkart_pricing",
+          "description": "Flipkart platform pricing data."
+        }
+      ]
+    },
+    "blinkit": {
+      "description": "Blinkit channel — sales, inventory, invoices, bulk POs, and ads",
+      "tables": [
+        {
+          "table": "DataWarehouse.blinkit_sales",
+          "description": "Blinkit daily sales data. Key columns: date, sku, city, warehouse, units_sold, revenue."
+        },
+        {
+          "table": "DataWarehouse.blinkit_soh",
+          "description": "Blinkit Stock on Hand — inventory levels across dark stores."
+        },
+        {
+          "table": "DataWarehouse.blinkit_invoices",
+          "description": "Blinkit invoice-level data for reconciliation."
+        },
+        {
+          "table": "DataWarehouse.blinkit_bulkpo",
+          "description": "Blinkit Bulk Purchase Orders — supply chain and replenishment tracking."
+        },
+        {
+          "table": "voylla.Blinkit_Ads_Report",
+          "description": "Blinkit Ads performance report — campaign and keyword level metrics."
+        },
+        {
+          "table": "voylla.Blinkit_CPM",
+          "description": "Blinkit CPM (Cost Per Mille) ad data."
+        },
+        {
+          "table": "voylla.Blinkit_CampaignWise_ProductID",
+          "description": "Maps Blinkit campaigns to their advertised Product IDs."
+        },
+        {
+          "table": "voylla.Blinkit_Campaign_Runtime",
+          "description": "Blinkit campaign runtime and scheduling metadata."
+        },
+        {
+          "table": "voylla.Blinkit_Mapping",
+          "description": "Blinkit SKU/product mapping reference table."
+        }
+      ]
+    },
+    "quick_commerce_scrapers": {
+      "description": "Competitor and listing intelligence from Instamart and Zepto",
+      "tables": [
+        {
+          "table": "DataWarehouse.instamart_scraper_product_data",
+          "description": "Scraped product listings from Swiggy Instamart — pricing, availability, rank."
+        },
+        {
+          "table": "DataWarehouse.zepto_scraper_product_data",
+          "description": "Scraped product listings from Zepto — pricing, availability, rank."
+        }
+      ]
+    },
+    "supply_chain": {
+      "description": "GBL Garden Unicommerce — supply chain, inventory, orders, and GST exports",
+      "tables": [
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_saleorders",
+          "description": "Sale orders across channels. Filter: Status NOT IN ('CANCELLED'). Revenue = SUM(Selling Price). Date = 'Order Date as dd/mm/yyyy hh:MM:ss' (wrap in DATE())."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_inventorysnapshot",
+          "description": "Aggregated inventory snapshot per SKU per facility. Available = Inventory - Inventory Blocked. Always filter on CURRENT_DATE with MAX fallback."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_purchaseorders",
+          "description": "Purchase orders — supply chain and vendor management. Note: 'Recieved Quantity' (intentional typo in column name)."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_grn",
+          "description": "Goods Receipt Notes — vendor quality and inwarding. Date = 'GRN Date'."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_gatepass",
+          "description": "Outward movements and inter-facility transfers. Date = 'Gatepass Created At'."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_itemmaster",
+          "description": "Product dimension table. Join via 'Product Code' (primary) or 'EAN' (fallback)."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_returninvoices",
+          "description": "Return invoices. Date = 'Return Date'."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_tallygstreport",
+          "description": "Forward GST/Tally export. Revenue = 'Sales'. Date = 'Date'."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_tallycancelgstreport",
+          "description": "Cancelled order GST/Tally export."
+        },
+        {
+          "table": "DataWarehouse.gbl_garden_in_unicommerce_tallyreturngstreport",
+          "description": "Return order GST/Tally export."
+        }
+      ]
+    }
+  },
   "common_questions": [
     "Show me PetCrux Amazon ads performance for the last 30 days",
     "What is PetCrux's overall ROAS, ACOS, and TACOS this month?",
-    "Which PetCrux ASINs have the highest ad spend and what is their ROAS?",
+    "Which ASINs have the highest ad spend and what is their ROAS?",
     "Compare organic vs inorganic revenue split for PetCrux ASINs",
-    "Build a PetCrux Amazon ads dashboard for the last 60 days"
+    "What is the current FBA inventory level across all PetCrux ASINs?",
+    "Show Blinkit sales trend for PetCrux over the last 4 weeks",
+    "How does PetCrux pricing compare across Amazon, Blinkit, Zepto, and Instamart?",
+    "What is the Blinkit stock on hand vs recent sales velocity?",
+    "Show top performing Blinkit ad campaigns by ROAS",
+    "What is the pending PO quantity vs current inventory for supply planning?"
   ]
 }
