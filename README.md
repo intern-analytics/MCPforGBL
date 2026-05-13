@@ -234,6 +234,17 @@ Our platform is designed to scale securely and efficiently through a unified, to
 
 Instead of an analyst managing multiple tokens for different brands, **one user receives one API key**. Within our `api_keys.json` registry, that token securely maps to any number of database credentials. At runtime, the MCP server dynamically retrieves the correct underlying database login from the EC2 `.env` file based on which tool the AI calls, ensuring rigorous multi-tenant data isolation.
 
+## 🔄 Dual-Push GitHub Configuration
+
+If you are migrating the codebase between organizations (e.g., from `intern-analytics` to `GOATBrandLabsTech`) but want to keep both repositories strictly synchronized from your local machine, you can configure git to push to both simultaneously with a single `git push` command.
+
+Run these commands in your local terminal:
+```bash
+git remote set-url --add --push origin https://github.com/intern-analytics/MCPforGBL.git
+git remote set-url --add --push origin https://github.com/GOATBrandLabsTech/MCPforGBL.git
+```
+Once configured, any `git push` executed locally will automatically upload your code to both organization repositories at the exact same time.
+
 ## 🛠️ Development
 
 - **Local Server**: `python -m src.server` (Standard stdio)
