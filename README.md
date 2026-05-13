@@ -62,35 +62,37 @@ source .venv/bin/activate
 ### Key Management CLI
 Manage your keys locally or on EC2 using the built-in auth module:
 
-### 6. Manage Multi-Tenant API Keys (Admin API)
-To provision unique database tenants to separate keys, we host an internal Admin REST API.
-This API handles secrets, so it should **only** be accessed from localhost on your EC2 instance (binds to `:8001`).
+### 6. Manage Multi-Tenant API Keys (Admin UI & API)
+To provision API keys and map them to brand permissions, we host an internal Admin Dashboard and REST API. This dashboard automatically fetches the underlying database credentials from the `.env` file on the server and attaches them to an `end_user` token.
 
-### Option A: Use it securely locally via SSH Tunneling (Recommended)
-You can build a secure tunnel from your Windows PC directly to your EC2 instance so you can interact with the Admin API from your own local browser (like Swagger UI) or local terminal smoothly:
+This API handles sensitive token generation, so it should **only** be accessed from localhost on your EC2 instance (binds to `:8001`).
+
+### Option A: Access the UI securely via SSH Tunneling (Recommended)
+You can build a secure tunnel from your local PC directly to your EC2 instance so you can interact with the Admin Dashboard UI in your local browser:
 ```powershell
 # Run this on your local Windows PC
 ssh -i "path/to/your/key.pem" -L 8001:127.0.0.1:8001 ubuntu@YOUR_EC2_IP
 ```
-Now, you can interact with the API or view the Swagger UI right from your local machine: `http://127.0.0.1:8001/docs`
+Now, you can interact with the UI right from your local machine: `http://127.0.0.1:8001/admin`
+From the UI, you can select multiple brands at once to provision under a single end-user email! An email with the token will be automatically sent to the user.
 
-### Option B: Use it directly on EC2
+### Option B: Use the CLI on EC2
 To start the Admin API on EC2:
 ```bash
 python3 -m src.admin_api
 ```
 
-With the Admin API running, you can create a new brand tenant key from another EC2 terminal window:
+With the Admin API running, you can create a new key via a direct `curl` request:
 ```bash
 curl -X POST http://127.0.0.1:8001/keys/generate \
      -H "Content-Type: application/json" \
-     -d '{"db_user": "brand_a_user", "db_pass": "supersecret"}'
+     -d '{"end_user": "analyst@example.com", "brand_names": ["chumbak", "imara"]}'
 ```
-*(The response will contain the `api_key` assigned to `brand_a_user`.)*
+*(The response will contain the unified `api_key` assigned to `analyst@example.com`.)*
 
 Other utility endpoints:
 - List tenants: `curl http://127.0.0.1:8001/keys`
-- Revoke tenant: `curl -X DELETE http://127.0.0.1:8001/keys/brand_a_user`
+- Revoke tenant access for a specific brand: `curl -X DELETE http://127.0.0.1:8001/keys?end_user=analyst@example.com&db_user=chumbak_user`
 
 ---
 
@@ -226,15 +228,11 @@ If you prefer to connect directly to the EC2 instance's IP without using the Duc
 
 ---
 
-## 📈 Scalability Roadmap
+## 📈 Multi-Brand Scalability & Architecture
 
-Our platform is designed to scale securely and efficiently through a robust, role-based access control system.
+Our platform is designed to scale securely and efficiently through a unified, token-per-user model. 
 
-We plan to scale user management by generating **separate, dedicated API keys for each user/tenant**. In our architecture, the API key acts as more than just an authentication token—it inherently defines a user's complete permission profile. The key itself tells the server exactly how much access the user has.
-
-This approach allows us to tightly enforce database interactions and tool availability based on **limited-access accounts** and customized **skill files**, ensuring that each user only interacts with the data and capabilities they are explicitly authorized to use.
-
----
+Instead of an analyst managing multiple tokens for different brands, **one user receives one API key**. Within our `api_keys.json` registry, that token securely maps to any number of database credentials. At runtime, the MCP server dynamically retrieves the correct underlying database login from the EC2 `.env` file based on which tool the AI calls, ensuring rigorous multi-tenant data isolation.
 
 ## 🛠️ Development
 
