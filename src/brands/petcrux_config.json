@@ -52,27 +52,6 @@
         }
       ]
     },
-    "pricing": {
-      "description": "Pricing data across Amazon, Flipkart, and AJIO",
-      "tables": [
-        {
-          "table": "dbt_dsarkar.amazon_pricing",
-          "description": "Selling price per ASIN on Amazon. Use as ASP source for revenue calculations."
-        },
-        {
-          "table": "dbt_dsarkar.blinkit_pricing",
-          "description": "Blinkit product pricing. Join on SKU/EAN."
-        },
-        {
-          "table": "DataWarehouse.ajio_pricing",
-          "description": "AJIO platform pricing data."
-        },
-        {
-          "table": "DataWarehouse.flipkart_pricing",
-          "description": "Flipkart platform pricing data."
-        }
-      ]
-    },
     "blinkit": {
       "description": "Blinkit channel — sales, inventory, invoices, bulk POs, and ads",
       "tables": [
@@ -180,7 +159,6 @@
     "Compare organic vs inorganic revenue split for PetCrux ASINs",
     "What is the current FBA inventory level across all PetCrux ASINs?",
     "Show Blinkit sales trend for PetCrux over the last 4 weeks",
-    "How does PetCrux pricing compare across Amazon, Blinkit, Zepto, and Instamart?",
     "What is the Blinkit stock on hand vs recent sales velocity?",
     "Show top performing Blinkit ad campaigns by ROAS",
     "What is the pending PO quantity vs current inventory for supply planning?"
