@@ -258,6 +258,6 @@ async def api_update_username(db_user: str, payload: UpdateUsernameRequest):
         raise HTTPException(status_code=404, detail=f"No keys found for db_user '{db_user}'")
 
 if __name__ == "__main__":
-    print("\nAdmin Dashboard available at: http://127.0.0.1:8001/admin")
+    print("\nAdmin Dashboard available at: http://127.0.0.1:8003/admin")
     print("Server running strictly on loopback for security.\n")
-    uvicorn.run("src.admin_api:app", host="127.0.0.1", port=8001, reload=True)
+    uvicorn.run("src.admin_api:app", host="127.0.0.1", port=8003, reload=True)

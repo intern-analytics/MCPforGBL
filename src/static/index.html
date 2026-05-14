@@ -329,7 +329,6 @@
                 <thead>
                     <tr>
                         <th>End User</th>
-                        <th>Database User</th>
                         <th>API Key Prefix</th>
                         <th>Expiration Date</th>
                         <th>Status</th>
@@ -440,7 +439,6 @@
 
                 row.innerHTML = `
                     <td>${key.end_user}</td>
-                    <td>${key.db_user}</td>
                     <td><code>${key.key_prefix}</code></td>
                     <td>${dateStr}</td>
                     <td><span class="badge ${statusClass}">${key.status}</span></td>
