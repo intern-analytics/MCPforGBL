@@ -6,7 +6,7 @@ from pathlib import Path
 import mcp.types as types
 from mcp.server import Server
 from src.db import run_query
-from src.auth import db_user_var, db_pass_var
+from src.auth import authorized_brands_var
 
 BRANDS_DIR = Path(__file__).parent / "brands"
 
@@ -32,9 +32,12 @@ def register_tools(server: Server):
     @server.list_tools()
     async def handle_list_tools() -> list[types.Tool]:
         tools = []
-        current_user = db_user_var.get()
+        authorized_brands = authorized_brands_var.get() or {}
+        
+        # Check if user has powerbi_readonlyuser anywhere
+        has_powerbi = any(b.get("db_user") == "powerbi_readonlyuser" for b in authorized_brands.values())
 
-        if current_user == "powerbi_readonlyuser":
+        if has_powerbi:
             tools.append(types.Tool(
                 name="list_tables",
                 description="Returns a list of all accessible tables across all schemas",
@@ -43,25 +46,22 @@ def register_tools(server: Server):
 
         # Load dynamic brand tools
         brands = load_brand_configs()
-        current_user = db_user_var.get()
         has_brand_tools = False
 
         for brand_id, config in brands.items():
             # Security: Only list the tool if the user is authorized for this brand
-            allowed_users = config.get("allowed_db_user")
+            is_authorized = brand_id in authorized_brands or "unbranded" in authorized_brands
             
-            # If it's a string, convert to a list for uniform checking
-            if isinstance(allowed_users, str):
-                allowed_users = [allowed_users]
+            # Superuser override
+            if any(b.get("db_user") in ["postgres", "powerbi_readonlyuser"] for b in authorized_brands.values()):
+                is_authorized = True
                 
-            # If allowed_users is provided, check if current_user is in the list
-            if allowed_users and current_user not in allowed_users:
+            if not is_authorized:
                 continue
 
             has_brand_tools = True
 
             # Build a rich description using schema and instructions
-            # RENAMING TO 'silent_' TO FORCE THE MODEL INTO A DIFFERENT BEHAVIOR
             final_tool_name = f"{config.get('tool_name', brand_id)}"
             
             tool_description = (
@@ -91,7 +91,7 @@ def register_tools(server: Server):
                 }
             ))
         
-        if current_user in ["powerbi_readonlyuser"]:
+        if has_powerbi:
             # Keep the legacy execute_query for backward compatibility or admin use
             tools.append(types.Tool(
                 name="execute_query",
@@ -112,17 +112,18 @@ def register_tools(server: Server):
         name: str, arguments: dict | None
     ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
         arguments = arguments or {}
-        db_user = db_user_var.get()
-        db_pass = db_pass_var.get()
+        authorized_brands = authorized_brands_var.get() or {}
 
         if name == "list_tables":
-            if db_user != "powerbi_readonlyuser":
+            # Find powerbi credentials
+            powerbi_creds = next((b for b in authorized_brands.values() if b.get("db_user") == "powerbi_readonlyuser"), None)
+            if not powerbi_creds:
                 raise ValueError("Unauthorized access to list_tables")
             try:
                 results = await run_query(
                     "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema', 'pg_catalog')",
-                    db_user=db_user,
-                    db_pass=db_pass
+                    db_user=powerbi_creds["db_user"],
+                    db_pass=powerbi_creds["db_pass"]
                 )
                 return [types.TextContent(type="text", text=json.dumps(results, indent=2))]
             except Exception as e:
@@ -136,9 +137,28 @@ def register_tools(server: Server):
                 if not sql:
                     raise ValueError("sql argument is required")
                 
-                # You can add brand-specific SQL validation or prefixing here if needed
+                # Retrieve the specific credentials for this brand execution
+                is_authorized = brand_id in authorized_brands or "unbranded" in authorized_brands
+                
+                # Check for superuser fallback
+                super_creds = next((b for b in authorized_brands.values() if b.get("db_user") in ["postgres", "powerbi_readonlyuser"]), None)
+                
+                creds = None
+                if brand_id in authorized_brands:
+                    creds = authorized_brands[brand_id]
+                elif "unbranded" in authorized_brands:
+                    creds = authorized_brands["unbranded"]
+                elif super_creds:
+                    creds = super_creds
+                    
+                if not is_authorized and not super_creds:
+                    raise ValueError(f"Unauthorized access to tool {name}")
+                
+                if not creds:
+                    raise ValueError(f"No database credentials found for tool {name}")
+
                 try:
-                    results = await run_query(sql, db_user=db_user, db_pass=db_pass)
+                    results = await run_query(sql, db_user=creds["db_user"], db_pass=creds["db_pass"])
                     return [types.TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
                 except Exception as e:
                     return [types.TextContent(type="text", text=f"Error executing {config['display_name']} query: {e}")]
@@ -147,8 +167,13 @@ def register_tools(server: Server):
             sql = arguments.get("sql")
             if not sql:
                 raise ValueError("sql argument is required")
+                
+            powerbi_creds = next((b for b in authorized_brands.values() if b.get("db_user") == "powerbi_readonlyuser"), None)
+            if not powerbi_creds:
+                 raise ValueError("Unauthorized access to execute_query")
+                 
             try:
-                results = await run_query(sql, db_user=db_user, db_pass=db_pass)
+                results = await run_query(sql, db_user=powerbi_creds["db_user"], db_pass=powerbi_creds["db_pass"])
                 return [types.TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
             except Exception as e:
                 return [types.TextContent(type="text", text=f"Error executing query: {e}")]

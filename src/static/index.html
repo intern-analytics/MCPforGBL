@@ -328,6 +328,7 @@
             <table>
                 <thead>
                     <tr>
+                        <th>End User</th>
                         <th>Database User</th>
                         <th>API Key Prefix</th>
                         <th>Expiration Date</th>
@@ -347,12 +348,14 @@
         <div class="modal">
             <h3 style="margin-bottom: 1.5rem;">Generate Access Token</h3>
             <div class="form-group">
-                <label>Database Username</label>
-                <input type="text" id="db_user" placeholder="e.g. user_analytics">
+                <label>End User Email</label>
+                <input type="email" id="end_user" placeholder="e.g. alice@brand.com">
             </div>
             <div class="form-group">
-                <label>Database Password</label>
-                <input type="password" id="db_pass" placeholder="••••••••">
+                <label>Access Level (Brands)</label>
+                <div id="brands-checkbox-list" style="max-height: 200px; overflow-y: auto; background: #0f172a; border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.5rem;">
+                    <div style="color: var(--text-muted); padding: 0.5rem;">Loading brands...</div>
+                </div>
             </div>
             
             <div id="key-result" class="result-box">
@@ -369,6 +372,44 @@
 
     <script>
         const API_BASE = "/admin-api"; // Relative to the host
+
+        async function fetchBrands() {
+            try {
+                const response = await fetch(`${API_BASE}/brands`);
+                const data = await response.json();
+                const container = document.getElementById('brands-checkbox-list');
+                container.innerHTML = '';
+                data.brands.forEach(b => {
+                    const div = document.createElement('div');
+                    div.style.padding = '0.5rem';
+                    div.style.display = 'flex';
+                    div.style.alignItems = 'center';
+                    div.style.gap = '0.75rem';
+                    
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = b.brand_id;
+                    cb.id = 'chk_' + b.brand_id;
+                    cb.style.width = 'auto';
+                    cb.style.cursor = 'pointer';
+                    
+                    const lbl = document.createElement('label');
+                    lbl.htmlFor = 'chk_' + b.brand_id;
+                    lbl.textContent = b.tool_name;
+                    lbl.style.margin = '0';
+                    lbl.style.color = 'white';
+                    lbl.style.cursor = 'pointer';
+                    
+                    div.appendChild(cb);
+                    div.appendChild(lbl);
+                    container.appendChild(div);
+                });
+            } catch (err) {
+                console.error("Failed to load brands", err);
+                const container = document.getElementById('brands-checkbox-list');
+                container.innerHTML = '<div style="color: #ef4444; padding: 0.5rem;">Error loading brands</div>';
+            }
+        }
 
         async function fetchKeys() {
             try {
@@ -398,15 +439,16 @@
                 const dateStr = key.expires_at ? new Date(key.expires_at).toLocaleDateString() : 'N/A';
 
                 row.innerHTML = `
+                    <td>${key.end_user}</td>
                     <td>${key.db_user}</td>
                     <td><code>${key.key_prefix}</code></td>
                     <td>${dateStr}</td>
                     <td><span class="badge ${statusClass}">${key.status}</span></td>
                     <td class="actions">
-                        <button class="btn-icon" title="Revalidate" onclick="revalidateKey('${key.db_user}')">
+                        <button class="btn-icon" title="Revalidate" onclick="revalidateKey('${key.end_user}', '${key.db_user}')">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         </button>
-                        <button class="btn-icon" style="color: var(--danger)" title="Revoke" onclick="revokeKey('${key.db_user}')">
+                        <button class="btn-icon" style="color: var(--danger)" title="Revoke" onclick="revokeKey('${key.end_user}', '${key.db_user}')">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </td>
@@ -420,11 +462,13 @@
         }
 
         async function generateKey() {
-            const user = document.getElementById('db_user').value;
-            const pass = document.getElementById('db_pass').value;
+            const end_user = document.getElementById('end_user').value;
+            const checkboxes = document.querySelectorAll('#brands-checkbox-list input[type="checkbox"]:checked');
+            const selectedBrands = Array.from(checkboxes).map(cb => cb.value);
+            
             const btn = document.getElementById('generate-btn');
 
-            if (!user || !pass) return alert("Please fill in both fields");
+            if (!end_user || selectedBrands.length === 0) return alert("Please fill in all fields and select at least one brand");
 
             btn.disabled = true;
             btn.textContent = "Generating...";
@@ -433,13 +477,16 @@
                 const response = await fetch(`${API_BASE}/keys/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ db_user: user, db_pass: pass })
+                    body: JSON.stringify({ end_user: end_user, brand_names: selectedBrands })
                 });
                 const data = await response.json();
                 
                 if (data.success) {
                     document.getElementById('key-result').style.display = 'block';
                     document.getElementById('display-new-key').textContent = data.api_key;
+                    if (data.message) {
+                        alert(data.message);
+                    }
                     btn.style.display = 'none';
                     fetchKeys();
                 } else {
@@ -453,22 +500,22 @@
             }
         }
 
-        async function revokeKey(db_user) {
-            if (!confirm(`Are you sure you want to revoke access for ${db_user}?`)) return;
+        async function revokeKey(end_user, db_user) {
+            if (!confirm(`Are you sure you want to revoke access for ${end_user} on ${db_user}?`)) return;
             
             try {
-                await fetch(`${API_BASE}/keys/${db_user}`, { method: 'DELETE' });
+                await fetch(`${API_BASE}/keys?end_user=${encodeURIComponent(end_user)}&db_user=${encodeURIComponent(db_user)}`, { method: 'DELETE' });
                 fetchKeys();
             } catch (err) {
                 alert("Revoke failed");
             }
         }
 
-        async function revalidateKey(db_user) {
+        async function revalidateKey(end_user, db_user) {
             try {
-                await fetch(`${API_BASE}/keys/${db_user}/revalidate`, { method: 'PUT' });
+                await fetch(`${API_BASE}/keys/revalidate?end_user=${encodeURIComponent(end_user)}&db_user=${encodeURIComponent(db_user)}`, { method: 'PUT' });
                 fetchKeys();
-                alert(`Successfully extended access for ${db_user} by 90 days.`);
+                alert(`Successfully extended access for ${end_user} on ${db_user} by 90 days.`);
             } catch (err) {
                 alert("Revalidation failed");
             }
@@ -478,8 +525,8 @@
             document.getElementById('modal-overlay').style.display = 'flex';
             document.getElementById('key-result').style.display = 'none';
             document.getElementById('generate-btn').style.display = 'block';
-            document.getElementById('db_user').value = '';
-            document.getElementById('db_pass').value = '';
+            document.getElementById('end_user').value = '';
+            document.querySelectorAll('#brands-checkbox-list input[type="checkbox"]').forEach(cb => cb.checked = false);
         }
 
         function hideModal() {
@@ -487,6 +534,7 @@
         }
 
         // Initialize
+        fetchBrands();
         fetchKeys();
         // Auto-refresh every 30s
         setInterval(fetchKeys, 30000);
