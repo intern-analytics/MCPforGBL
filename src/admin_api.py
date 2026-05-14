@@ -54,6 +54,8 @@ async def public_portal():
 
 @app.get("/brands")
 async def api_list_brands():
+    # Brand IDs in this list are hidden from the public portal and admin UI dropdown
+    HIDDEN_BRANDS = {"super_user", "rainbow_brands"}
     brands = []
     brands_dir = os.path.join(os.path.dirname(__file__), "brands")
     if os.path.exists(brands_dir):
@@ -65,13 +67,12 @@ async def api_list_brands():
                         data = json.load(f)
                         brand_id = data.get("brand_id")
                         tool_name = data.get("tool_name", brand_id)
-                        if brand_id:
+                        if brand_id and brand_id not in HIDDEN_BRANDS:
                             brands.append({"brand_id": brand_id, "tool_name": tool_name})
                 except Exception:
                     pass
     # Sort alphabetically by tool_name
     brands.sort(key=lambda x: x["tool_name"])
-    brands.append({"brand_id": "super_user", "tool_name": "Super User"})
     return {"brands": brands}
 
 @app.post("/keys/generate")
