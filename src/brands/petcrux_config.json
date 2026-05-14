@@ -132,7 +132,7 @@
       "tables": [
         {
           "table": "DataWarehouse.gbl_garden_in_unicommerce_saleorders",
-          "description": "Sale orders across channels. Filter: Status NOT IN ('CANCELLED'). Revenue = SUM(Selling Price). Date = 'Order Date as dd/mm/yyyy hh:MM:ss' (wrap in DATE())."
+          "description": "Sale orders across channels. MANDATORY filters: (1) Status NOT IN ('CANCELLED'). (2) \"Channel Name\" NOT IN ('Blinkit india Pvt ltd', 'BLINKIT_PETCRUX', 'CUSTOM', 'Instamart B2B', 'INSTAMART_PETCRUX_BLR'). RATIONALE: These are B2B and Q-commerce fulfillment channels whose data is captured in dedicated qcom tables — never use saleorders for Blinkit or Instamart data. Revenue = SUM(\"Selling Price\"). Date = 'Order Date as dd/mm/yyyy hh:MM:ss' (wrap in DATE())."
         },
         {
           "table": "DataWarehouse.gbl_garden_in_unicommerce_inventorysnapshot",
