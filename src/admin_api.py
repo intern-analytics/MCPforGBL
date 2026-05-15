@@ -43,14 +43,6 @@ async def admin_dashboard():
             return f.read()
     return "<h1>Admin UI Not Found</h1><p>Please ensure src/static/index.html exists.</p>"
 
-@app.get("/portal", response_class=HTMLResponse)
-async def public_portal():
-    """Serves the Public Registration Portal."""
-    portal_path = os.path.join(STATIC_DIR, "portal.html")
-    if os.path.exists(portal_path):
-        with open(portal_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>Portal Not Found</h1><p>Please ensure src/static/portal.html exists.</p>"
 
 @app.get("/brands")
 async def api_list_brands():
