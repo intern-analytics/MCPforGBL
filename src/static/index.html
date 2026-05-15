@@ -217,6 +217,19 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
+        .brand-tag {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            margin: 2px;
+            white-space: nowrap;
+        }
+
         /* Modal Overlay */
         .modal-overlay {
             position: fixed;
@@ -418,6 +431,7 @@
                     <tr>
                         <th>End User</th>
                         <th>API Key Prefix</th>
+                        <th>Tools</th>
                         <th>Expiration Date</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -457,8 +471,26 @@
         </div>
     </div>
 
+    <!-- Revoke Access Modal -->
+    <div class="modal-overlay" id="revoke-modal-overlay">
+        <div class="modal">
+            <h3 style="margin-bottom: 0.5rem;">Revoke Tool Access</h3>
+            <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">
+                Select the tools to revoke for <strong id="revoke-modal-email" style="color: var(--text-main);"></strong>
+            </p>
+            <div id="revoke-brands-list" style="max-height: 220px; overflow-y: auto; background: #0f172a; border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.5rem; margin-bottom: 1.5rem;">
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button class="btn btn-outline" style="flex: 1;" onclick="hideRevokeModal()">Cancel</button>
+                <button class="btn btn-outline" style="flex: 1;" onclick="revokeSelected()">Revoke Selected</button>
+                <button class="btn btn-primary" style="flex: 1; background: var(--danger);" onclick="revokeAllAccess()">Revoke All</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const API_BASE = "/admin-api"; // Relative to the host
+        // Auto-detect prefix: works both standalone (/admin) and via server2 (/admin-api/admin)
+        const API_BASE = window.location.pathname.replace(/\/admin$/, '');
 
         async function fetchBrands() {
             try {
@@ -510,31 +542,42 @@
             }
         }
 
+        const _emailBrandsMap = {};
+
         function renderTable(keys) {
             const tbody = document.getElementById('keys-table-body');
             tbody.innerHTML = '';
-            
+
             let active = 0, expired = 0;
 
             keys.forEach(key => {
                 const row = document.createElement('tr');
-                
+
                 const statusClass = key.status === 'Active' ? 'badge-active' : (key.status === 'Expired' ? 'badge-expired' : 'badge-pending');
                 if (key.status === 'Active') active++;
                 if (key.status === 'Expired') expired++;
 
                 const dateStr = key.expires_at ? new Date(key.expires_at).toLocaleDateString() : 'N/A';
+                const brands = key.brands || [];
+                _emailBrandsMap[key.end_user] = brands;
+
+                const brandsHtml = brands.length
+                    ? brands.map(b => `<span class="brand-tag">${b}</span>`).join('')
+                    : '<span style="color: var(--text-muted); font-size: 0.75rem;">None</span>';
+
+                const safeEmail = key.end_user.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
                 row.innerHTML = `
                     <td>${key.end_user}</td>
                     <td><code>${key.key_prefix}</code></td>
+                    <td style="max-width: 220px;">${brandsHtml}</td>
                     <td>${dateStr}</td>
                     <td><span class="badge ${statusClass}">${key.status}</span></td>
                     <td class="actions">
-                        <button class="btn-icon" title="Revalidate" onclick="revalidateKey('${key.end_user}', '${key.db_user}')">
+                        <button class="btn-icon" title="Revalidate" onclick="revalidateKey('${safeEmail}', '${key.db_user}')">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         </button>
-                        <button class="btn-icon" style="color: var(--danger)" title="Revoke" onclick="revokeKey('${key.end_user}', '${key.db_user}')">
+                        <button class="btn-icon" style="color: var(--danger)" title="Revoke Access" onclick="showRevokeModal('${safeEmail}')">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </td>
@@ -586,11 +629,82 @@
             }
         }
 
-        async function revokeKey(end_user, db_user) {
-            if (!confirm(`Are you sure you want to revoke access for ${end_user} on ${db_user}?`)) return;
-            
+        let _revokeUser = null;
+        let _revokeBrands = [];
+
+        function showRevokeModal(email) {
+            _revokeUser = email;
+            _revokeBrands = _emailBrandsMap[email] || [];
+
+            document.getElementById('revoke-modal-email').textContent = email;
+
+            const list = document.getElementById('revoke-brands-list');
+            list.innerHTML = '';
+
+            if (_revokeBrands.length === 0) {
+                list.innerHTML = '<div style="color: var(--text-muted); padding: 0.5rem;">No tools assigned.</div>';
+            } else {
+                _revokeBrands.forEach(brand => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'padding:0.5rem;display:flex;align-items:center;gap:0.75rem;';
+
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = brand;
+                    cb.id = 'revoke_chk_' + brand;
+                    cb.checked = true;
+                    cb.style.cssText = 'width:auto;cursor:pointer;';
+
+                    const lbl = document.createElement('label');
+                    lbl.htmlFor = 'revoke_chk_' + brand;
+                    lbl.textContent = brand;
+                    lbl.style.cssText = 'margin:0;color:white;cursor:pointer;font-size:0.875rem;';
+
+                    div.appendChild(cb);
+                    div.appendChild(lbl);
+                    list.appendChild(div);
+                });
+            }
+
+            document.getElementById('revoke-modal-overlay').style.display = 'flex';
+        }
+
+        function hideRevokeModal() {
+            document.getElementById('revoke-modal-overlay').style.display = 'none';
+            _revokeUser = null;
+            _revokeBrands = [];
+        }
+
+        async function revokeSelected() {
+            const selected = Array.from(
+                document.querySelectorAll('#revoke-brands-list input[type="checkbox"]:checked')
+            ).map(cb => cb.value);
+
+            if (selected.length === 0) return alert("Select at least one tool to revoke.");
+
+            if (selected.length === _revokeBrands.length) {
+                return revokeAllAccess();
+            }
+
+            if (!confirm(`Revoke ${selected.length} tool(s) for ${_revokeUser}?`)) return;
+
             try {
-                await fetch(`${API_BASE}/keys?end_user=${encodeURIComponent(end_user)}&db_user=${encodeURIComponent(db_user)}`, { method: 'DELETE' });
+                for (const brand of selected) {
+                    await fetch(`${API_BASE}/keys/brand?email=${encodeURIComponent(_revokeUser)}&brand_id=${encodeURIComponent(brand)}`, { method: 'DELETE' });
+                }
+                hideRevokeModal();
+                fetchKeys();
+            } catch (err) {
+                alert("Revoke failed");
+            }
+        }
+
+        async function revokeAllAccess() {
+            if (!confirm(`Revoke ALL tool access for ${_revokeUser}? This will remove their API key entirely.`)) return;
+
+            try {
+                await fetch(`${API_BASE}/keys/by-email?email=${encodeURIComponent(_revokeUser)}`, { method: 'DELETE' });
+                hideRevokeModal();
                 fetchKeys();
             } catch (err) {
                 alert("Revoke failed");

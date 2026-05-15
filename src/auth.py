@@ -108,6 +108,32 @@ def revoke_api_key(end_user: str, db_user: str) -> bool:
                     return True
     return False
 
+def revoke_all_by_email(email: str) -> bool:
+    keys = load_keys()
+    key_to_remove = None
+    for key, data in keys.items():
+        if isinstance(data, dict) and data.get("end_user") == email:
+            key_to_remove = key
+            break
+    if key_to_remove:
+        del keys[key_to_remove]
+        save_keys(keys)
+        return True
+    return False
+
+def revoke_brand_by_email(email: str, brand_id: str) -> bool:
+    keys = load_keys()
+    for key, data in list(keys.items()):
+        if isinstance(data, dict) and data.get("end_user") == email:
+            data = _migrate_key_to_brands(data)
+            if brand_id in data.get("brands", {}):
+                del data["brands"][brand_id]
+                if not data["brands"]:
+                    del keys[key]
+                save_keys(keys)
+                return True
+    return False
+
 def revalidate_api_key(end_user: str, db_user: str) -> dict | None:
     keys = load_keys()
     

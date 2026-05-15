@@ -11,7 +11,7 @@ except ImportError:
     pass
 import json
 from datetime import datetime, timezone
-from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key, update_db_user_password, update_db_user_username
+from src.auth import generate_api_key, revoke_api_key, load_keys, revalidate_api_key, update_db_user_password, update_db_user_username, revoke_all_by_email, revoke_brand_by_email
 
 app = FastAPI(title="Brand MCP Server - Internal Admin API")
 
@@ -207,14 +207,35 @@ async def api_list_keys():
             else:
                 status_str = "Active (Pending Migration)"
 
+            brands_list = []
+            if "brands" in data:
+                brands_list = list(data["brands"].keys())
+            elif data.get("brand_id"):
+                brands_list = [data["brand_id"]]
+
             safe_list.append({
                 "end_user": data.get("end_user") or data.get("db_user"),
                 "db_user": data.get("db_user"),
                 "key_prefix": key[:8] + "..." if key else None,
                 "expires_at": expires_at_str,
-                "status": status_str
+                "status": status_str,
+                "brands": brands_list
             })
     return {"managed_keys": safe_list}
+
+@app.delete("/keys/by-email")
+async def api_revoke_all_by_email(email: str):
+    success = revoke_all_by_email(email)
+    if success:
+        return {"success": True, "message": f"Revoked all access for '{email}'"}
+    raise HTTPException(status_code=404, detail="No key found for that email")
+
+@app.delete("/keys/brand")
+async def api_revoke_brand(email: str, brand_id: str):
+    success = revoke_brand_by_email(email, brand_id)
+    if success:
+        return {"success": True, "message": f"Revoked '{brand_id}' access for '{email}'"}
+    raise HTTPException(status_code=404, detail="No key or brand found for that email")
 
 @app.delete("/keys")
 async def api_revoke_key(end_user: str, db_user: str):
